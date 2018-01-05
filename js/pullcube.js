@@ -62,7 +62,7 @@ class PullCube {
         this._faceLoaded = false;
         var snoopLayout = [ [0, 3], [12, 2], [20, 1] ];
         var self = this;
-        loadVBOFromURL("/snoop.vbo", 24, snoopLayout, function(mesh) {
+        loadVBOFromURL("./snoop.vbo", 24, snoopLayout, function(mesh) {
             self._faceMesh = mesh;
             self._faceLoaded = true;
             //init();
@@ -272,7 +272,7 @@ class PullCube {
         gl.bindFramebuffer( gl.FRAMEBUFFER, null ); 
         gl.viewport(0, 0, canvas.width, canvas.height);
 
-        loadImageFromUrl("/snoop.jpg");
+        loadImageFromUrl("./snoop.jpg");
     }
 
     //
