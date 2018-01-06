@@ -557,7 +557,7 @@ class PullCube {
         quat.multiply( this._modelRotation, horizontalRot, this._modelRotation );
         //quat.multiply( this._modelRotation, verticalRot, this._modelRotation );
 
-        quat.multiply( this._cameraRotation, horizontalRotCamera, this._cameraRotation );
+        //quat.multiply( this._cameraRotation, horizontalRotCamera, this._cameraRotation );
         //quat.multiply( this._cameraRotation, verticalRot, this._cameraRotation );
         
         // vec3.transformQuat(this._cameraForward, vec3.fromValues(0.0, 0.0, -1.0 ), this._modelRotation );
