@@ -7,6 +7,7 @@ var lastMouseX = null;
 var lastMouseY = null;
 
 var mouseCoord = [];
+var touches = []
 
 var _pullCube = null;
 var _time = null;
@@ -77,6 +78,11 @@ function ready()
     document.body.addEventListener('touchstart', function(event) {
         event.preventDefault();
         handleTouchStart(event);
+    }, false); 
+
+    document.body.addEventListener('touchend', function(event) {
+        event.preventDefault();
+        handleTouchEnd(event);
     }, false); 
     
     // start the core loop cycle
@@ -155,6 +161,9 @@ function initWebGL() {
 
         gl.getExtension('WEBGL_depth_texture');
     }
+
+    console.log("supports webgl 2: ");
+    console.log(_supportsWebGL2);
 
     // If we don't have a GL context, give up now
 
@@ -314,9 +323,17 @@ function handlePointerStart(event, sculpt, rotate, zoom)
 
         handlePointerMove(event, lastMouseX, lastMouseY, true, false, 0);
 
-        currSculpting = true;
+        _pullCube.startToolUse();
     }
     
+}
+
+function handlePointerEnd(event, sculpt)
+{
+    if(sculpt)
+    {
+        _pullCube.endToolUse();
+    }
 }
 
 function handleMouseDown(event) {
@@ -327,6 +344,10 @@ function handleMouseDown(event) {
     var rightclick;
     if (event.which) rightclick = (event.which == 3);
     else if (event.button) rightclick = (event.button == 2);
+
+    var leftclick;
+    if (event.which) leftclick = (event.which == 1);
+    else if (event.button) leftclick = (event.button == 0);
 
     if( rightclick )
     {
@@ -339,7 +360,7 @@ function handleMouseDown(event) {
     
     var altKey = event.altKey == 1;
     
-    var sculpting = false;
+    var sculpting = leftclick;
     var rotating = rightclick && !altKey;
     var zooming = rightclick && altKey;
     
@@ -356,13 +377,17 @@ function handleMouseUp(event) {
     if (event.which) rightclick = (event.which == 3);
     else if (event.button) rightclick = (event.button == 2);
 
+    var leftclick;
+    if (event.which) leftclick = (event.which == 1);
+    else if (event.button) leftclick = (event.button == 0);
+
     var altKey = event.altKey == 1;
+
+    var sculpting = leftDown;
+    var rotating = rightDown && !altKey;
+    var zooming = rightDown && altKey;
     
-    var sculpting = false;
-    var rotating = rightclick && !altKey;
-    var zooming = rightclick && altKey;
-    
-    if( !rightclick )
+    if( leftclick )
     {
         leftDown = false;
     }
@@ -371,10 +396,9 @@ function handleMouseUp(event) {
         rightDown = false;
     }
 
-    if( sculpting )
-    {
-        currSculpting = false;
-    }
+    handlePointerEnd(event, 
+        sculpting && !leftDown
+    );
 }
 
 function handleMouseMove(event) {
@@ -382,7 +406,7 @@ function handleMouseMove(event) {
 
     var altKey = event.altKey == 1;
 
-    var sculpting = false;
+    var sculpting = leftDown;
     var rotating = rightDown && !altKey;
     var zooming = rightDown && altKey;
 
@@ -404,12 +428,10 @@ function handleRightClick(event) {
     return false;
 }
 
-var touches = []
+
 
 function handleTouchStart(event) {
     touches = event.touches;
-
-    
 
     var rightclick = false;
 
@@ -431,6 +453,15 @@ function handleTouchStart(event) {
     touches.length == 1,
     touches.length == 2,
     touches.length == 2);
+}
+
+function handleTouchEnd(event) {
+    touches = event.touches;
+
+    if( touches.length != 1 )
+    {
+        handlePointerEnd(event, true);
+    }
 }
 
 var lastTouchDist = -1;
@@ -484,7 +515,7 @@ function handleTouchMove(event) {
     handlePointerMove(event, newX, newY, 
         touches.length == 1,
         touches.length == 2,
-        zoomDelta
+        zoomDelta * 0.2
     );
 
     return false;

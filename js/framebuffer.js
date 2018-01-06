@@ -22,7 +22,11 @@ class Framebuffer {
 
         if( this._color )
         {
-            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, this._color.native(), 0);
+            for( var c = 0; c < this._color.length; ++c )
+            {
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + c, gl.TEXTURE_2D, this._color[c].native(), 0);
+            }
+            
         }
 
         if ( this._depth )
@@ -31,9 +35,9 @@ class Framebuffer {
         }
     }
 
-    color()
+    color(index = 0)
     {
-        return this._color;
+        return this._color[index];
     }
 
     depth()

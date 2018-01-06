@@ -21,14 +21,13 @@
     <!-- Fragment shader program -->
 
 
-    <script id="face-vs" type="x-shader/x-vertex">
+    <script id="face-vs" type="x-shader/x-vertex">#version 300 es
         precision highp float;
         precision mediump int;
         precision highp sampler2D;
 
-        attribute vec3 aPos;
-        attribute vec2 aTexcoord;
-        attribute float aVertexID;
+        layout( location = 1) in vec2 aTexcoord;
+        layout( location = 2) in float aVertexID;
 
         uniform sampler2D uPosTex;
         uniform sampler2D uVelTex;
@@ -40,77 +39,75 @@
         uniform mat4 uVMatrix;
         uniform mat4 uPMatrix;
 
-        varying vec2 vTexcoord;
-        varying vec3 vColor;
-        varying vec3 test;
+        out vec2 vTexcoord;
+        out vec3 vColor;
 
         void main(void) {
             vTexcoord.xy = aTexcoord.xy;
 
-            vec2 uv = vec2(mod(aVertexID, uImageSize), floor( aVertexID / uImageSize)) / uImageSize;
-            vec3 pos = texture2D(uPosTex, uv.xy).xyz;
-            vColor = texture2D(uVelTex, uv.xy).xyz;
-            test =  abs(aPos);
-
-            //pos = pos + aPos;
+            vec2 uv = (vec2(mod(aVertexID, uImageSize), floor( aVertexID / uImageSize)) + 0.5 ) / uImageSize;
+            vec3 pos = texture(uPosTex, uv.xy).xyz;
+            vColor = pos;
             
             gl_Position = uPMatrix * uVMatrix * vec4(pos.xyz, 1.0);          
         }
 
     </script>
 
-    <script id="face-fs" type="x-shader/x-fragment">
+    <script id="face-fs" type="x-shader/x-fragment">#version 300 es
         precision highp float;
 
         uniform sampler2D uColorTex;
 
-        varying vec2 vTexcoord;
-        varying vec3 test;
-        varying vec3 vColor;
+        in vec2 vTexcoord;
+        in vec3 vColor;
+
+        layout(location = 0) out vec4 color;
+        layout(location = 1) out vec4 position;
 
         void main(void) {
-            gl_FragColor = texture2D(uColorTex, vec2(vTexcoord.x, 1.0 - vTexcoord.y)) * 0.5;
+            color = texture(uColorTex, vec2(vTexcoord.x, 1.0 - vTexcoord.y)) * 0.5;
+            position = vec4(vColor, 1.0);
         }
 
     </script>
 
-    <script id="initPos-vs" type="x-shader/x-vertex">
+    <script id="initPos-vs" type="x-shader/x-vertex">#version 300 es
         precision highp float;
 
-        attribute vec3 aPos;
-        attribute vec2 aTexcoord;
-        attribute float aVertexID;
+        layout( location = 0) in vec3 aPos;
+        layout( location = 2) in float aVertexID;
 
         uniform float uImageSize;
 
         uniform mat4 uMMatrix;
 
-        varying vec4 vColor;
-        varying vec2 vTexcoord;
+        out vec4 vColor;
 
         void main(void) {
             gl_PointSize = 1.0;
             vColor = uMMatrix * vec4(aPos.xyz, 1.0);
-            vTexcoord = aTexcoord;
 
-            vec2 uv = ( vec2(mod(aVertexID, uImageSize), floor( aVertexID / uImageSize)) + 1.0 ) / uImageSize;
+            vec2 uv = ( vec2(mod(aVertexID, uImageSize), floor( aVertexID / uImageSize)) + 0.5 ) / uImageSize;
             gl_Position = vec4(uv.xy*2.0 - 1.0, 0.0, 1.0);
         }
 
     </script>
 
-    <script id="vColor-fs" type="x-shader/x-fragment">
+    <script id="vColor-fs" type="x-shader/x-fragment">#version 300 es
         precision highp float;
 
-        varying vec2 vTexcoord;
-        varying vec4 vColor;
+        in vec2 vTexcoord;
+        in vec4 vColor;
+        in vec3 vPos;
 
+        out vec4 color;
         void main(void) {
-            gl_FragColor = vColor;
+            color = vColor;
         }
     </script>
 
-    <script id="pos-fs" type="x-shader/x-fragment">
+    <script id="pos-fs" type="x-shader/x-fragment">#version 300 es
         precision highp float;
         precision highp sampler2D;
        
@@ -120,29 +117,31 @@
         uniform float uImageSize;
         uniform float uDeltaTime;
 
-        varying vec2 vTextureCoord;
+        in vec2 vTextureCoord;
+
+        out vec4 color;
 
         void main(void) {
-            vec3 lastPos = texture2D(uPosTex, vTextureCoord.xy).xyz;
-            vec3 vel = texture2D(uVelTex, vTextureCoord.xy).xyz;
+            vec3 lastPos = texture(uPosTex, vTextureCoord.xy).xyz;
+            vec3 vel = texture(uVelTex, vTextureCoord.xy).xyz;
 
-            vec4 c = vec4(lastPos + vel * uDeltaTime, 1.0);   
-
-            gl_FragColor = c;
+            vec4 c = vec4(lastPos + vel * uDeltaTime, 1.0);  
+            
+            color = c;
         }
 
     </script>
 
-    <script id="vel-vs" type="x-shader/x-vertex">
+    <script id="vel-vs" type="x-shader/x-vertex">#version 300 es
         precision highp float;
         precision highp sampler2D;
 
-        attribute vec3 aPos;
-        attribute vec2 aTexcoord;
-        attribute float aVertexID;
+        layout( location = 0) in vec3 aPos;
+        layout( location = 2) in float aVertexID;
 
         uniform sampler2D uPosTex;
         uniform sampler2D uVelTex;
+        uniform sampler2D uGrabTex;
 
         uniform float uImageSize;
         uniform float uDeltaTime;
@@ -157,58 +156,60 @@
 
         uniform mat4 uInvMVPMatrix;
 
-        varying vec4 vColor;
-        varying vec2 vTexcoord;
+        out vec4 vColor;
+
 
         void main(void) {
             gl_PointSize = 1.0;
-            vTexcoord = aTexcoord;
 
-            vec2 uv = vec2(mod(aVertexID, uImageSize), floor( aVertexID / uImageSize))/ uImageSize;
+            vec2 uv = (vec2(mod(aVertexID, uImageSize), floor( aVertexID / uImageSize)) + 0.5 ) / uImageSize;
 
             vec4 dPos = uMMatrix * vec4(aPos.xyz, 1.0); 
 
-            vec3 pos = texture2D(uPosTex, uv.xy).xyz;
-            vec3 vel = texture2D(uVelTex, uv.xy).xyz;
-            vel = vel.xyz - vel.xyz * uDeltaTime * 2.0;
+            vec3 pos = texture(uPosTex, uv.xy).xyz;
+            vec3 vel = texture(uVelTex, uv.xy).xyz;
+            vel = vel.xyz - vel.xyz * uDeltaTime * 3.0;
+
+            float grab = texture(uGrabTex, uv.xy).x;
 
             vec4 scrPos = uPMatrix * uVMatrix * vec4(pos, 1.0);
-            scrPos.xyz / scrPos.w;
+            scrPos.xyz /= scrPos.w;
             scrPos.xyz = scrPos.xyz * 0.5 + 0.5;
+
+            vec4 mousePos = uInvMVPMatrix * vec4(uMousePos.xy, 0.0, 1.0);
+            mousePos.xyz /= mousePos.w;
             
-            vec3 off = scrPos.xyz - vec3(uMousePos.xy, 0.0);
+            vec3 off = scrPos.xyz - vec3(uMousePos.xy, -1.0);
             off.z = 0.0;
 
             float sqDist = length(off);
 
-            vec3 scrVel = (off * 3.0 / max(sqDist, 0.1))  * uDeltaTime;
+            vec3 scrVel = (off * 1.0 / max(sqDist, 0.1))  * uDeltaTime;
+
+            float pull = sqDist * 4.0;
+            pull = pull * pull * 50.0;
+            scrVel = scrVel * (1.0 - grab) - ( off * 3.0) * grab;
 
             vec4 wVel = (uInvMVPMatrix * vec4(scrVel.xyz, 0.0));
             vel += wVel.xyz;
 
-            vec3 adjOff =  dPos.xyz - pos.xyz;
-            float adjDist = length(adjOff);
-            adjDist = smoothstep(adjDist, 0.01, 1.0) * adjDist;
-
-            adjDist = adjDist*adjDist * 15.0;
+            vec3 adjOff =  (dPos.xyz - pos.xyz) * 2.0;
             vel.xyz += adjOff;
           
             vColor = vec4(vel, 1.0);
 
-            uv.xy += (1.0 / uImageSize);
             gl_Position = vec4(uv.xy*2.0 - 1.0, 0.0, 1.0);
         }
 
     </script>
 
-    <script id="grab-vs" type="x-shader/x-vertex">
+    <script id="grab-vs" type="x-shader/x-vertex">#version 300 es
         precision highp float;
 
-        attribute vec3 aPos;
-        attribute vec2 aTexcoord;
-        attribute float aVertexID;
+        layout( location = 2) in float aVertexID;
 
         uniform sampler2D uPosTex;
+        uniform sampler2D uScreenPosTex;
 
         uniform float uImageSize;
 
@@ -220,208 +221,88 @@
         uniform mat4 uVMatrix;
         uniform mat4 uPMatrix;
 
-        varying vec4 vColor;
-        varying vec2 vTexcoord;
+        out vec4 vColor;
 
         void main(void) {
             gl_PointSize = 1.0;
-            vTexcoord = aTexcoord;
 
-            vec2 uv = vec2(mod(aVertexID, uImageSize), floor( aVertexID / uImageSize)) / uImageSize;
+            vec2 uv = (vec2(mod(aVertexID, uImageSize), floor( aVertexID / uImageSize)) + 0.5 ) / uImageSize;
 
-            vec3 pos = texture2D(uPosTex, uv.xy).xyz;
+            vec3 pos = texture(uPosTex, uv.xy).xyz;
+            vec3 hoverPos = texture(uScreenPosTex, uMousePos.xy).xyz;
 
-            vec4 scrPos = uPMatrix * uVMatrix * uMMatrix * vec4(pos, 1.0);
-            scrPos.xyz / scrPos.w;
-            scrPos.xyz = scrPos.xyz * 0.5 + 0.5;
+            vec3 off = pos.xyz - hoverPos;
 
-            vec3 off = scrPos.xyz - vec3(uMousePos.xy, 0.0);
+            float dist = length(off);
 
-            float sqDist = dot(off.xy, off.xy);
-            float sqRad = uRadius * uRadius;
+            float strength = 1.0 - smoothstep(0.0, uRadius, dist);
+            strength = strength * strength * strength * strength * strength;
+            
+            vColor = vec4(strength, 0.0, 1.0, 1.0);
 
-            float strength = 1.0 - smoothstep(0.0, sqRad, sqDist);
-
-            vColor = vec4(strength, 0.0, 0.0, 1.0);
-
-            uv.xy += (1.0 / uImageSize);
             gl_Position = vec4(uv.xy*2.0 - 1.0, 0.0, 1.0);
         }
     </script>
 
 
 
-    <script id="screenquad-vs" type="x-shader/x-vertex">
-        attribute highp vec3 aPos;
+    <script id="screenquad-vs" type="x-shader/x-vertex">#version 300 es
+        precision highp float;
 
-        varying highp vec2 vTextureCoord;
+        layout( location = 0) in vec3 aPos;
+
+        out vec2 vTextureCoord;
 
         void main(void)
         {
             gl_Position = vec4(aPos.xy, 1.0, 1.0);
-            vTextureCoord = (aPos.xy + vec2(1.0)) * 0.5;
+            vTextureCoord = (aPos.xy + vec2(1.0, 1.0)) * 0.5;
         }
     </script>
 
-    <script id="velocity-fs" type="x-shader/x-fragment">
-        varying highp vec2 vTextureCoord;
 
+    <script id="compose-fs" type="x-shader/x-fragment">#version 300 es
+        precision highp float;
 
-        uniform sampler2D uVelTex;
-        uniform sampler2D uPosTex;
-        uniform sampler2D uDesiredPosTex;
-
-        uniform highp mat4 uMMatrix;
-        uniform highp mat4 uVMatrix;
-        uniform highp mat4 uPMatrix;
-
-        uniform highp mat4 uInvMVPMatrix;
-
-        uniform highp float uDeltaTime;
-        uniform highp float uRandomness;
-        uniform highp float uTime;
-        uniform highp float uGravityScale;
-
-        uniform highp float uImageSize;
-
-        uniform highp float uAspect;
-
-        uniform highp float uRadius;
-        uniform highp vec3 uMousePos;
-
-        highp float rand(highp vec2 co){
-            return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
-        }
-
-        void main(void) {
-            highp vec4 pos = texture2D(uPosTex, vTextureCoord.st);
-            highp vec4 vel = texture2D(uVelTex, vTextureCoord.st);
-
-            highp vec4 desPos = texture2D(uDesiredPosTex, vTextureCoord.st);
-
-            highp vec4 scrPos = uPMatrix * uVMatrix * uMMatrix * vec4(pos.xyz, 1.0);
-
-            scrPos.xyz /= scrPos.w;
-            scrPos.xy = scrPos.xy * 0.5 + 0.5;
-
-            highp vec2 off = scrPos.xy - uMousePos.xy;
-
-            highp float sqDist = dot(off, off);
-            highp float sqRad = uRadius * uRadius;
-
-            highp vec2 scrVel = vec2(0.0, 0.0);
-
-
-            {
-                scrVel.xy = -(off * 5.0 / max(sqDist, 0.0001))  * uDeltaTime;
-            }
-
-            highp vec4 wVel = (uInvMVPMatrix * vec4(scrVel.xy, 0.0, 0.0));
-
-            vel.xyz += wVel.xyz;
-
-            highp vec3 adjOff =  desPos.xyz - pos.xyz;
-            highp float adjDist =  length(adjOff);
-
-            adjDist = adjDist*adjDist * 0.05;
-            vel.xyz += adjOff * adjDist * uDeltaTime;
-
-            
-            vel.xyz = vel.xyz - vel.xyz * uDeltaTime * 0.3;
-            
-            //vel.xy += scrPos.xy;
-
-            gl_FragColor = vel;
-        }
-    </script>
-
-    <script id="position-fs" type="x-shader/x-fragment">
-        varying highp vec2 vTextureCoord;
-
-        uniform sampler2D uVelTex;
-        uniform sampler2D uPosTex;
-
-        uniform highp float uDeltaTime;
-        
-        highp float rand(highp vec2 co){
-            return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
-        }
-
-        void main(void) {
-            highp vec4 pos = texture2D(uPosTex, vTextureCoord.st);
-            highp vec4 vel = texture2D(uVelTex, vTextureCoord.st);
-
-            pos.xyz = pos.xyz + vel.xyz * uDeltaTime;
-            pos.a = 1.0;
-
-            gl_FragColor = pos;
-        }
-    </script>
-
-    <script id="compose-fs" type="x-shader/x-fragment">
-        varying highp vec2 vTextureCoord;
+        in vec2 vTextureCoord;
 
         uniform sampler2D uScrTex;
         uniform sampler2D uPosTex;
         uniform sampler2D uVelTex;
 
-        void main(void) {
-            highp vec4 col = texture2D(uScrTex, vTextureCoord.st);
+        out vec4 color;
 
-            highp vec2 centerOffset = vec2(0.5) - vTextureCoord.xy;
-            highp float off = dot(centerOffset, centerOffset);
+        void main(void) {
+            vec4 col = texture(uScrTex, vTextureCoord.st);
+
+            vec2 centerOffset = vec2(0.5, 0.5) - vTextureCoord.xy;
+            float off = dot(centerOffset, centerOffset);
             off = 1.0 - off;
             off = off * off;
             off = off * 2.0;
-            highp float vignette = off;
+            float vignette = off;
 
             col *= vignette;
 
-            gl_FragColor = col;
+            color = col;
         }
     </script>
 
-    <script id="copy-fs" type="x-shader/x-fragment">
-        varying highp vec2 vTextureCoord;
+    <script id="copy-fs" type="x-shader/x-fragment">#version 300 es
+        precision highp float;
+
+        in vec2 vTextureCoord;
 
         uniform sampler2D uCopyTex;
 
+        out vec4 color;
+
         void main(void) {
-            highp vec4 col = texture2D(uCopyTex, vTextureCoord.st);
-            gl_FragColor = col;
+            vec4 col = texture(uCopyTex, vTextureCoord.st);
+            color = col;
         }
     </script>
 
-    <script id="initdata-fs" type="x-shader/x-fragment">
-        varying highp vec2 vTextureCoord;
-
-        uniform highp float uCubeSize;       // 64.0
-        uniform highp float uLayersPerRow;   // 8
-        uniform highp float uImageSize;      // 512
-
-        highp float rand(highp vec2 co){
-            return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
-        }
-
-        void main(void) {
-            highp float spacing = 1.0/uLayersPerRow;
-            
-            highp vec3 cubePos;        
-            cubePos.x = mod( vTextureCoord.x, spacing ) * uLayersPerRow;
-            cubePos.y = mod( vTextureCoord.y, spacing ) * uLayersPerRow;
-            cubePos.z = floor( vTextureCoord.x * uLayersPerRow ) + floor( vTextureCoord.y * uLayersPerRow ) * uLayersPerRow;  
-            
-            cubePos.xy *= uCubeSize;
-            
-            cubePos.xyz = floor(cubePos.xyz);
-            
-            cubePos.xyz -= vec3(uCubeSize*0.5);
-            
-
-            highp vec4 col = vec4( cubePos * 4.0, 1.0 );
-            gl_FragColor = col;
-        }
-    </script>
 </head>
 
 <body onload="start()" style="margin: 0px;touch-action:none;overflow:hidden;">
@@ -430,6 +311,29 @@
             Your browser doesn't appear to support the <code>&lt;canvas&gt;</code> element.
         </canvas>
     </div>
+    <style>
+        @font-face {
+            font-family: "Vera Mono";
+            src: url("fonts/VeraMono.ttf");
+        }
 
+        #overlaytext{
+            position: absolute;
+            bottom: 0%;
+            left: 50%;
+            font-size: 1em;
+            color: white;
+            transform: translate(-50%,-50%);
+            -ms-transform: translate(-50%,-50%);
+            font-family: "Vera Mono";
+        }
+</style>
+    <div id="blah">
+        <div id="overlaytext">
+            <p>
+                <a href="https://sketchfab.com/models/27c0788205264c7bac3b734e2733413c">Snoop Dogg</a> by <a href="https://sketchfab.com/tipatat">tipatat</a> is licensed under <a href="http://creativecommons.org/licenses/by/4.0">CC Attribution</a>
+            </p>
+        </div>
+    </div>   
 </body>
 </html>

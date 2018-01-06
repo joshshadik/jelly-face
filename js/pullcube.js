@@ -3,7 +3,7 @@ class PullCube {
 
     static get RT_TEX_SIZE()
     {
-        return 4096;
+        return 512;
     }
 
     static get CUBE_SIZE()
@@ -40,8 +40,6 @@ class PullCube {
 
         this._composeMaterial = null;   // applies any post processing effects
 
-        this._faceMaterial = null;
-
         this._pMatrix = [];
         this._vMatrix = [];
         this._mMatrix = [];
@@ -57,9 +55,16 @@ class PullCube {
         this._cameraUp = [];
         this._cameraRight = [];
 
+        this._faceMaterial = null;
+        this._grabMaterial = null;
+        this._faceUVMaterial = null;
+
         this._faceColorBuffer = null;
+        this._grabBuffer = null;
+        this._faceUVBuffer = null;
 
         this._faceLoaded = false;
+        this._faceColorSize = 4096;
         var snoopLayout = [ [0, 3], [12, 2], [20, 1] ];
         var self = this;
         loadVBOFromURL("./snoop.vbo", 24, snoopLayout, function(mesh) {
@@ -146,60 +151,35 @@ class PullCube {
         var texelData = formats["texelData"];
         var internalFormat = formats["internalFormat"];
     
-        // need either floating point, or half floating point precision for holding position and velocity data
-        if( _supportsWebGL2 )
-        {
-            var ext = gl.getExtension("EXT_color_buffer_float");
-            if( ext == null )
-            {
-                alert("Device & browser needs to support floating point or half floating point textures in order to work properly");
-            }
-            else
-            {
-                internalFormat = gl.RGBA32F;
-            }
-        }
-        else
-        {
-            var ext = gl.getExtension("OES_texture_float");
-            if( ext == null )
-            {
-                ext = gl.getExtension("OES_texture_half_float");
-                if( ext != null )
-                {
-                    texelData = ext.HALF_FLOAT_OES;
-                }
-                else
-                {
-                    alert("Device & browser needs to support floating point or half floating point textures in order to work properly");
-                }
-            }
-        }
-    
         // setup framebuffer to render voxel colors & visibility into texture : rgb = xyz, a = visibility
         this._rtPosBuffer = new Framebuffer(
-            new Texture(PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData ), null,
+            [new Texture(PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData )], null,
             PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE
         );
 
         this._rtVelBuffer = new Framebuffer(
-            new Texture(PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData ), null,
+            [new Texture(PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData )], null,
             PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE
         );
 
         this._desiredPosBuffer = new Framebuffer(
-            new Texture(PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData ), null,
+            [new Texture(PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData )], null,
             PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE
         );
 
         // setup framebuffer as intermediate - to copy content
         this._rtCopyBuffer = new Framebuffer(
-            new Texture(PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData ), null,
+            [new Texture(PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData )], null,
             PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE
         );
 
         this._faceColorBuffer = new Framebuffer(
-            new Texture(PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE ), null,
+            [new Texture(this._faceColorSize, this._faceColorSize, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE )], null,
+            this._faceColorSize, this._faceColorSize
+        );
+
+        this._grabBuffer = new Framebuffer(
+            [new Texture(PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData )], null,
             PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE
         );
         
@@ -221,6 +201,7 @@ class PullCube {
 
         var posFS = Material.getShader(gl, "pos-fs");
         var velVS = Material.getShader(gl, "vel-vs");
+        var grabVS = Material.getShader(gl, "grab-vs");
 
         var vColorFS = Material.getShader(gl, "vColor-fs");
         
@@ -228,10 +209,10 @@ class PullCube {
         this._velMaterial = new Material(velVS, vColorFS);
         this._velMaterial.setTexture("uPosTex", this._rtPosBuffer.color().native());
         this._velMaterial.setTexture("uVelTex", this._rtVelBuffer.color().native());
+        this._velMaterial.setTexture("uGrabTex", this._grabBuffer.color().native());
         this._velMaterial.addVertexAttribute("aPos");
         this._velMaterial.addVertexAttribute("aVertexID");
-        this._velMaterial.addVertexAttribute("aTexcoord");
-        this._velMaterial.setFloat("uRadius", 0.1 );
+        this._velMaterial.setFloat("uRadius", 0.25 );
         this._velMaterial.setFloat("uAspect", canvas.height / canvas.width);   
         this._velMaterial.setFloat("uImageSize", PullCube.RT_TEX_SIZE);
 
@@ -240,6 +221,14 @@ class PullCube {
         this._posMaterial.setTexture("uVelTex", this._rtVelBuffer.color().native());
         this._posMaterial.addVertexAttribute("aPos");
         this._posMaterial.setFloat("uImageSize", PullCube.RT_TEX_SIZE);
+
+        this._grabMaterial = new Material(grabVS, vColorFS);
+        this._grabMaterial.setTexture("uPosTex", this._rtPosBuffer.color().native());
+        this._grabMaterial.setTexture("uScreenPosTex", this._screenBuffer.color(1).native());
+        this._grabMaterial.addVertexAttribute("aVertexID");
+        this._grabMaterial.setFloat("uRadius", 0.25 );
+        this._grabMaterial.setFloat("uAspect", canvas.height / canvas.width);   
+        this._grabMaterial.setFloat("uImageSize", PullCube.RT_TEX_SIZE);
         
         // material to copy 1 texture into another
         this._copyMaterial = new Material(quadVS, copyFS);   
@@ -257,7 +246,6 @@ class PullCube {
         var initPosVS = Material.getShader(gl, "initPos-vs");
         var initDataMaterial = new Material( initPosVS, vColorFS );
         initDataMaterial.addVertexAttribute("aPos");
-        initDataMaterial.addVertexAttribute("aTexcoord");
         initDataMaterial.addVertexAttribute("aVertexID");
         initDataMaterial.setMatrix("uPMatrix", new Float32Array( this._pMatrix ) );
         initDataMaterial.setMatrix("uVMatrix", new Float32Array( this._vMatrix ) );
@@ -288,7 +276,7 @@ class PullCube {
         var faceFS = Material.getShader(gl, "face-fs");
 
         this._faceMaterial = new Material(faceVS, faceFS);
-        this._faceMaterial.addVertexAttribute("aPos");
+        //this._faceMaterial.addVertexAttribute("aPos");
         this._faceMaterial.addVertexAttribute("aTexcoord");
         this._faceMaterial.addVertexAttribute("aVertexID");
         this._faceMaterial.setTexture("uColorTex", this._faceColorBuffer.color().native());
@@ -306,9 +294,9 @@ class PullCube {
         this._velMaterial.setMatrix("uVMatrix", new Float32Array( this._vMatrix ) );
         this._velMaterial.setMatrix("uMMatrix", new Float32Array(this._mMatrix));
 
-        this._posMaterial.setMatrix("uPMatrix", new Float32Array( this._pMatrix ) );
-        this._posMaterial.setMatrix("uVMatrix", new Float32Array( this._vMatrix ) );
-        this._posMaterial.setMatrix("uMMatrix", new Float32Array(this._mMatrix));
+        this._grabMaterial.setMatrix("uPMatrix", new Float32Array( this._pMatrix ) );
+        this._grabMaterial.setMatrix("uVMatrix", new Float32Array( this._vMatrix ) );
+        this._grabMaterial.setMatrix("uMMatrix", new Float32Array(this._mMatrix));
 
         this._faceMaterial.setMatrix("uPMatrix", new Float32Array( this._pMatrix ) );
         this._faceMaterial.setMatrix("uVMatrix", new Float32Array( this._vMatrix ) );
@@ -321,7 +309,12 @@ class PullCube {
         var texelData = gl.UNSIGNED_BYTE;
         var depthInternal = _supportsWebGL2 ? gl.DEPTH_COMPONENT24 : gl.DEPTH_COMPONENT;
 
-        var colorTex = new Texture( canvas.width, canvas.height, gl.RGBA, gl.RGBA, texelData );
+        var formats = this.getFloat32Format();
+
+        var fTexelData = formats["texelData"];
+        var fInternalFormat = formats["internalFormat"];
+
+        var colorTex = [new Texture( canvas.width, canvas.height, gl.RGBA, gl.RGBA, texelData ), new Texture(canvas.width, canvas.height, fInternalFormat, gl.RGBA, fTexelData)];
         var depthTex = new Texture(canvas.width, canvas.height, depthInternal, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT);
         
         if( this._screenBuffer )
@@ -376,7 +369,7 @@ class PullCube {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.bindTexture(gl.TEXTURE_2D, null);
     
-        this.blit(texture, this._faceColorBuffer.fbo(), PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE );
+        this.blit(texture, this._faceColorBuffer.fbo(), this._faceColorSize, this._faceColorSize );
     }
 
 
@@ -448,12 +441,16 @@ class PullCube {
         this._velMaterial.setMatrix("uMMatrix", this._mMatrix);
         this._velMaterial.setMatrix("uVMatrix", this._vMatrix);
 
+        this._grabMaterial.setMatrix("uMMatrix", this._mMatrix);
+        this._grabMaterial.setMatrix("uVMatrix", this._vMatrix);
+
         var invVP = [];
-        mat4.multiply(invVP, this._vMatrix, this._mMatrix);
-        mat4.multiply(invVP, this._pMatrix, invVP);
+        //mat4.multiply(invVP, this._vMatrix, this._mMatrix);
+        mat4.multiply(invVP, this._pMatrix, this._vMatrix); // , invVP);
         mat4.invert(invVP, invVP);
 
         this._velMaterial.setMatrix("uInvMVPMatrix", invVP);
+        this._grabMaterial.setMatrix("uInvMVPMatrix", invVP);
     }
 
     postUpdate()
@@ -469,7 +466,7 @@ class PullCube {
         gl.viewport(0, 0, 512, 512);
         //gl.clear( gl.COLOR_BUFFER_BIT );
     
-        this._copyMaterial.setTexture("uCopyTex", this._rtVelBuffer.color().native() );
+        this._copyMaterial.setTexture("uCopyTex", this._rtPosBuffer.color().native() );
         this._copyMaterial.apply();   
         this._screenQuadMesh.render();
         this._copyMaterial.unapply();
@@ -482,21 +479,21 @@ class PullCube {
     {   
         this.renderParticleData( Time.deltaTime );
 
+
         this._screenBuffer.bind();
+        gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
 
         gl.clearColor( 0.5, 0.5, 0.5, 0.0 );
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
-        // this._voxelMaterials[this._voxelMaterialIndex].apply();
-        // this._cubeBatch.render();
-        // this._voxelMaterials[this._voxelMaterialIndex].unapply();
-
         if(this._faceLoaded )
         {
             this._faceMaterial.apply();
             this._faceMesh.render();
             this._faceMaterial.unapply();
         }
+
+        gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
     
         Framebuffer.bindDefault();
         gl.clear( gl.COLOR_BUFFER_BIT );
@@ -520,6 +517,7 @@ class PullCube {
         // }
 
         this._velMaterial.setMatrix("uPMatrix", this._pMatrix);
+        this._grabMaterial.setMatrix("uPMatrix", this._pMatrix);
         
         // Set the viewport to match
         gl.viewport(0, 0, canvas.width,canvas.height);
@@ -551,27 +549,56 @@ class PullCube {
         quat.rotateX(verticalRot, verticalRot, dY * 30.0 );
         
         var horizontalRot = quat.create();
-        quat.rotateY(horizontalRot, horizontalRot, dX * 30.0 );
+        quat.rotateY(horizontalRot, horizontalRot, dX * 5.0 );
+
+        var horizontalRotCamera = quat.create();
+        quat.rotateY(horizontalRotCamera, horizontalRotCamera, dX * 25.0);
         
         quat.multiply( this._modelRotation, horizontalRot, this._modelRotation );
-        quat.multiply( this._modelRotation, verticalRot, this._modelRotation );
+        //quat.multiply( this._modelRotation, verticalRot, this._modelRotation );
+
+        quat.multiply( this._cameraRotation, horizontalRotCamera, this._cameraRotation );
+        //quat.multiply( this._cameraRotation, verticalRot, this._cameraRotation );
         
-        vec3.transformQuat(this._cameraForward, vec3.fromValues(0.0, 0.0, -1.0 ), this._modelRotation );
-        vec3.normalize(this._cameraForward, this._cameraForward );
-        vec3.cross( this._cameraRight, this._cameraForward, this._cameraUp );
-        vec3.normalize(this._cameraRight, this._cameraRight );
-        vec3.cross( this._cameraUp, this._cameraRight, this._cameraForward );
-        vec3.normalize(this._cameraUp, this._cameraUp );
+        // vec3.transformQuat(this._cameraForward, vec3.fromValues(0.0, 0.0, -1.0 ), this._modelRotation );
+        // vec3.normalize(this._cameraForward, this._cameraForward );
+        // vec3.cross( this._cameraRight, this._cameraForward, this._cameraUp );
+        // vec3.normalize(this._cameraRight, this._cameraRight );
+        // vec3.cross( this._cameraUp, this._cameraRight, this._cameraForward );
+        // vec3.normalize(this._cameraUp, this._cameraUp );
+    }
+
+    startToolUse()
+    {
+        gl.viewport(0, 0, PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE);
+        gl.clearColor(0.0, 0.0, 0.0, 0.0);
+        
+        this.renderDataBuffer( this._grabBuffer.fbo(), this._grabMaterial, this._faceMesh, gl.POINTS );
+        
+        Framebuffer.bindDefault();
+    }
+
+    endToolUse()
+    {
+        gl.viewport(0, 0, PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE);
+        gl.clearColor(0.0, 0.0, 0.0, 0.0);
+
+        gl.bindFramebuffer( gl.FRAMEBUFFER, this._grabBuffer.fbo() );
+        gl.clear( gl.COLOR_BUFFER_BIT );
+
+        Framebuffer.bindDefault();
     }
 
     handleToolUse(nX, nY)
     {      
-        this._velMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, -1.0]);           
+        this._velMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, -1.0]);   
+        this._grabMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, -1.0]);          
     }
 
     handleMouseMove(nX, nY)
     {
         this._velMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, -1.0]);
+        this._grabMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, -1.0]);
     }
 
 
