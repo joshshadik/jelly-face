@@ -1,10 +1,13 @@
 <!doctype html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <title>Jelly Face</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="initial-scale=0.7, user-scalable=no">
 
-    <link rel="stylesheet" type="text/css" href="style.css">
+    <link rel="stylesheet" href="./style.css">
+    <link href="https://fonts.googleapis.com/css?family=PT+Sans" rel="stylesheet">
 
     <script src="thirdparty/gl-matrix-min.js"  type="text/javascript"></script>
     <script src="thirdparty/stats.min.js"  type="text/javascript"></script>
@@ -506,26 +509,20 @@
             Your browser doesn't appear to support the <code>&lt;canvas&gt;</code> element.
         </canvas>
     </div>
-    <style>
-        @font-face {
-            font-family: "Vera Mono";
-            src: url("fonts/VeraMono.ttf");
-        }
 
-        #overlaytext{
-            position: absolute;
-            bottom: 0%;
-            left: 50%;
-            font-size: 1em;
-            color: white;
-            transform: translate(-50%,-50%);
-            -ms-transform: translate(-50%,-50%);
-            font-family: "Vera Mono";
-        }
-</style>
-    <div id="blah">
+    <div>
+        <div id="iconContainer">
+            <div id="iconRow">
+                <input id="icon" onclick="loadFace(0);" type="image" src="./icons/snoop.png" />
+                <input id="icon" onclick="loadFace(1);" type="image" src="./icons/charlize.png" />
+                <input id="icon" onclick="loadFace(2);" type="image" src="./icons/jackie.png" />
+                <input id="icon" onclick="loadFace(3);" type="image" src="./icons/shatner.png" />
+                <input id="icon" onclick="loadFace(4);" type="image" src="./icons/obama.png" />
+                <input id="icon" onclick="loadFace(5);" type="image" src="./icons/marilyn.png" />
+            </div>
+        </div>
         <div id="overlaytext">
-            <p>
+            <p id="attributions">
                 <a href="https://sketchfab.com/models/27c0788205264c7bac3b734e2733413c">Snoop Dogg</a> by <a href="https://sketchfab.com/tipatat">tipatat</a> is licensed under <a href="http://creativecommons.org/licenses/by/4.0">CC Attribution</a>
             </p>
         </div>

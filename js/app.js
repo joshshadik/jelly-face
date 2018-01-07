@@ -18,6 +18,26 @@ var _supportsWebGL2 = false;
 
 var stats = new Stats();
 
+var models = [
+    "snoop",
+    "charlize",
+    "jackie",
+    "shatner",
+    "obama",
+    "marilyn"
+];
+
+var credits = [
+    '<a href="https://sketchfab.com/models/27c0788205264c7bac3b734e2733413c">Snoop Dogg</a> by <a href="https://sketchfab.com/tipatat">tipatat</a> is licensed under <a href="http://creativecommons.org/licenses/by/4.0">CC Attribution</a>',
+    '<a href="https://sketchfab.com/models/687ee1b6d7234ac4a4797f09435d8ab3">Charlize Theron</a> by <a href="https://sketchfab.com/tipatat">tipatat</a> is licensed under <a href="http://creativecommons.org/licenses/by/4.0">CC Attribution</a>',
+    '<a href="https://sketchfab.com/models/093b1edcac344c8bb272e1967aeac30c">Jackie Chan</a> by <a href="https://sketchfab.com/tipatat">tipatat</a> is licensed under <a href="http://creativecommons.org/licenses/by/4.0">CC Attribution</a>',
+    '<a href="https://sketchfab.com/models/5a4534d44b2c4244be9cd0a75fa81866">William Shatner</a> by <a href="https://sketchfab.com/tipatat">tipatat</a> is licensed under <a href="http://creativecommons.org/licenses/by/4.0">CC Attribution</a>',
+    '<a href="https://sketchfab.com/models/92589e6f710f409dbc1e9edbe26eb1bd">President Obama</a> by <a href="https://sketchfab.com/tipatat">tipatat</a> is licensed under <a href="http://creativecommons.org/licenses/by/4.0">CC Attribution</a>',
+    '<a href="https://sketchfab.com/models/ab61515e456549fd9d6e4caff91060ae">Marilyn Monroe</a> by <a href="https://sketchfab.com/tipatat">tipatat</a> is licensed under <a href="http://creativecommons.org/licenses/by/4.0">CC Attribution</a>'
+];
+
+var modelIndex = 0;
+
 //
 // start
 //
@@ -54,12 +74,18 @@ function start() {
         {
             _pullCube._shadowsEnabled = false;
         }
-        _pullCube.loadFace("./snoop.vbo", ready);
+        loadFace(modelIndex);
     }
     else
     {
         alert("sorry, your browser/device does not support the webgl compabilities this application needs.")
     }
+}
+
+function loadFace(index)
+{
+    _pullCube.loadFace("./assets/" + models[index], ready);
+    document.getElementById("attributions").innerHTML = credits[index];
 }
 
 function ready()
@@ -85,7 +111,7 @@ function ready()
         }, false); 
     
         document.body.addEventListener('touchend', function(event) {
-            event.preventDefault();
+            //event.preventDefault();
             handleTouchEnd(event);
         }, false); 
 
@@ -171,8 +197,7 @@ function initWebGL() {
         gl.getExtension('WEBGL_depth_texture');
     }
 
-    console.log("supports webgl 2: ");
-    console.log(_supportsWebGL2);
+    console.log("supports webgl 2: " + _supportsWebGL2);
 
     // If we don't have a GL context, give up now
 
@@ -222,7 +247,7 @@ function handleLoadImage( evt ) {
     }
 }
 
-function loadImageFromUrl(url) {
+function loadImageFromUrl(url, callback) {
     var req = new XMLHttpRequest();
 
     req.onreadystatechange = function()
@@ -235,6 +260,7 @@ function loadImageFromUrl(url) {
                 reader.onload = (function(theFile) {
                     return function(e) {
                         loadVoxelTexture( e.target.result );
+                        callback();
                     };
                 })(req.response);
         
@@ -455,7 +481,7 @@ function handleTouchStart(event) {
         {
             rightclick = true;
             lastMouseX = (touches[1].clientX + touches[0].clientX) / 2.0;
-            lastMouseY = (touches[1].clientY + touhces[0].clientY) / 2.0;
+            lastMouseY = (touches[1].clientY + touches[0].clientY) / 2.0;
         }
 
         handlePointerEnd(event, true);

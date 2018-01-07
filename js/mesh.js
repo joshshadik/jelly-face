@@ -8,8 +8,6 @@ class Mesh {
         this.layout = layout;
 
         this.elementCount = indices.length;
-        console.log(this.elementCount);
-        console.log(vertices.length / 3);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);

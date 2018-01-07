@@ -8,3 +8,34 @@
     padding: 3px;
     
 }
+
+#overlaytext{
+    position: absolute;
+    bottom: 2%;
+    left: 0%;
+    right: 0%;
+    text-align: center;
+    font-size: 1em;
+    color: white;
+    font-family: 'PT Sans', sans-serif;
+}
+
+#iconContainer {
+    position: absolute;
+    top: 2%;
+    left: 0%;
+    right: 0%;
+
+    user-select: none;
+    -moz-user-select: none;
+}
+
+#iconRow {
+    text-align: center;
+}
+#icon{
+    position: relative;
+    width: 100%;
+    max-width: 7.0vh;
+
+}

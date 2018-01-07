@@ -7,12 +7,9 @@ function loadVBO(buf, stride, layout)
     var vCount = dv.getUint32(0);
     var iCount = dv.getUint32(4);
 
-    console.log(vCount)
-
     var vertices = new Float32Array(buf, 8, vCount * stride/4);
     var indices = new Uint32Array(buf, 8 + vCount * stride, iCount);
 
-    console.log(indices[indices.length - 1]);
     return new Mesh(vertices, indices, stride, layout);
 }
 

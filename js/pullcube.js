@@ -80,14 +80,24 @@ class PullCube {
 
     loadFace(path, readyCallback)
     {
+        this._faceLoaded = false;
         var bufLayout = [ [0, 3], [12, 2], [20, 1] ];
         var self = this;
-        loadVBOFromURL(path, 24, bufLayout, function(mesh) {
+        var meshPath = path + ".vbo";
+        var imgPath = path + ".jpg";
+        loadVBOFromURL(meshPath, 24, bufLayout, function(mesh) {
             self._faceMesh = mesh;
-            
-            self.init();
+            self._faceColorBuffer = new Framebuffer(
+                [new Texture(self._faceColorSize, self._faceColorSize, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE )], null,
+                self._faceColorSize, self._faceColorSize
+            );
 
-            readyCallback();
+            loadImageFromUrl(imgPath, function() {
+                self.init();
+                readyCallback();
+            });
+
+
         });
     }
 
@@ -167,6 +177,7 @@ class PullCube {
         mat4.multiply(this._lightVP, this._lightPerspective, this._lightView);
     }
 
+
     //
     // initParticleData
     //
@@ -196,10 +207,7 @@ class PullCube {
             PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE
         );
 
-        this._faceColorBuffer = new Framebuffer(
-            [new Texture(this._faceColorSize, this._faceColorSize, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE )], null,
-            this._faceColorSize, this._faceColorSize
-        );
+
 
         this._grabBuffer = new Framebuffer(
             [new Texture(PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData )], null,
@@ -311,8 +319,6 @@ class PullCube {
         
         gl.bindFramebuffer( gl.FRAMEBUFFER, null ); 
         gl.viewport(0, 0, canvas.width, canvas.height);
-
-        loadImageFromUrl("./snoop.jpg");
     }
 
     //
@@ -423,6 +429,7 @@ class PullCube {
     }
 
     handleTextureLoaded(image, texture) {
+
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -564,7 +571,7 @@ class PullCube {
 
     render()
     {   
-        if( this._shadowsEnabled )
+        if( this._faceLoaded && this._shadowsEnabled )
         {
             this.renderShadows();
         }
@@ -587,9 +594,12 @@ class PullCube {
 
         gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
 
-        this._floorMaterial.apply();
-        this._floorMesh.render();
-        this._floorMaterial.unapply();
+        if( this._faceLoaded )
+        {
+            this._floorMaterial.apply();
+            this._floorMesh.render();
+            this._floorMaterial.unapply();
+        }
     
         Framebuffer.bindDefault();
         gl.clear( gl.COLOR_BUFFER_BIT );
