@@ -7,6 +7,7 @@
     <link rel="stylesheet" type="text/css" href="style.css">
 
     <script src="thirdparty/gl-matrix-min.js"  type="text/javascript"></script>
+    <script src="thirdparty/stats.min.js"  type="text/javascript"></script>
 
     <script src="js/time.js"           type="text/javascript"></script>
     <script src="js/texture.js"        type="text/javascript"></script>
@@ -62,8 +63,27 @@
         in vec2 vTexcoord;
         in vec3 vColor;
 
-        layout(location = 0) out vec4 color;
-        layout(location = 1) out vec4 position;
+        layout(location = 0) out vec4 position;
+        layout(location = 1) out vec4 color;
+
+
+        void main(void) {
+            color = texture(uColorTex, vec2(vTexcoord.x, 1.0 - vTexcoord.y)) * 0.5;
+            position = vec4(vColor, 1.0);
+        }
+
+    </script>
+
+    <script id="faceShadows-fs" type="x-shader/x-fragment">#version 300 es
+        precision highp float;
+
+        uniform sampler2D uColorTex;
+
+        in vec2 vTexcoord;
+        in vec3 vColor;
+
+        layout(location = 0) out vec4 position;
+        layout(location = 1) out vec4 color;
 
         void main(void) {
             color = texture(uColorTex, vec2(vTexcoord.x, 1.0 - vTexcoord.y)) * 0.5;
@@ -260,20 +280,114 @@
         }
     </script>
 
+    <script id="floor-vs" type="x-shader/x-vertex">#version 300 es
+        precision highp float;
+        precision lowp sampler2D;
+
+        layout( location = 0) in vec3 aPos;
+
+        uniform mat4 uMMatrix;
+        uniform mat4 uVMatrix;
+        uniform mat4 uPMatrix;
+
+        out vec4 vPos;
+
+        void main(void) {
+            vPos = uMMatrix * vec4(aPos, 1.0);
+            gl_Position = uPMatrix * uVMatrix * vPos;
+        }
+
+    </script>
+
+    <script id="floor-fs" type="x-shader/x-fragment">#version 300 es
+        precision mediump float;
+        precision lowp sampler2D;
+
+        in vec4 vPos;
+
+        layout(location = 0) out vec4 position;
+        layout(location = 1) out vec4 color;
+
+        void main(void)
+        {
+            position = vec4(vPos.xyz, 1.0);
+            color = vec4(1.0, 1.0, 1.0, 1.0);
+        }
+    </script>
+
 
     <script id="compose-fs" type="x-shader/x-fragment">#version 300 es
         precision highp float;
+        precision highp sampler2D;
 
         in vec2 vTextureCoord;
-
-        uniform sampler2D uScrTex;
+        
         uniform sampler2D uPosTex;
-        uniform sampler2D uVelTex;
+        uniform sampler2D uColTex;
+        uniform sampler2D uShadowTex;
+
+        uniform mat4 uLightSpace;
 
         out vec4 color;
 
+        const float EPSILON = 0.002;
+
+        float calcShadowFactor( highp vec3 lightPos )
+        {
+            float factor = 0.0;
+
+            int x = 0;
+            int y = 0;
+            //for( int x = 0; x <= 0; x++ )
+            {
+                //for( int y = 0; y <= 0; y++ )
+                {
+                    vec2 xyOff = vec2( x, y) * EPSILON;
+                    vec4 shadowPos = texture(uShadowTex, lightPos.xy + xyOff );
+                    
+                    float alpha = shadowPos.a;
+
+                    shadowPos = uLightSpace * vec4(shadowPos.xyz, 1.0);
+                    shadowPos.xyz /= shadowPos.w;
+                    //shadowPos.xyz = shadowPos.xyz * 0.5 + 0.5;
+                    
+                    float off = 0.0;
+                    if( shadowPos.z < lightPos.z - 0.002 )
+                    {
+                        off =  min(abs(lightPos.z - shadowPos.z) * 30.0, 1.0);
+
+                    }
+
+                    factor += off * alpha;
+                }
+            }
+
+            factor = factor / 1.0;
+
+            float rad = length(lightPos.xy - vec2(0.5, 0.5));
+
+            rad = smoothstep(0.4, 0.5, rad);
+            rad *= rad;
+
+            factor = factor * (1.0 - rad);
+
+            return factor;
+
+        }
+
         void main(void) {
-            vec4 col = texture(uScrTex, vTextureCoord.st);
+            vec4 col = texture(uColTex, vTextureCoord.st);
+            vec4 pos = texture(uPosTex, vTextureCoord.st);
+
+            /*
+            vec4 lightPos = uLightSpace * vec4(pos.xyz, 1.0);
+
+            lightPos.xyz = lightPos.xyz / lightPos.w;
+            lightPos.xy = lightPos.xy * 0.5 + 0.5;
+
+            
+            col.rgb *= 1.0 - calcShadowFactor(lightPos.xyz) * 0.4;
+            */
 
             vec2 centerOffset = vec2(0.5, 0.5) - vTextureCoord.xy;
             float off = dot(centerOffset, centerOffset);
@@ -287,6 +401,87 @@
             color = col;
         }
     </script>
+
+    <script id="composeShadows-fs" type="x-shader/x-fragment">#version 300 es
+        precision highp float;
+        precision highp sampler2D;
+
+        in vec2 vTextureCoord;
+        
+        uniform sampler2D uPosTex;
+        uniform sampler2D uColTex;
+        uniform sampler2D uShadowTex;
+
+        uniform mat4 uLightSpace;
+
+        out vec4 color;
+
+        const float EPSILON = 0.002;
+
+        float calcShadowFactor( highp vec3 lightPos )
+        {
+            float factor = 0.0;
+
+            for( int x = -1; x <= 1; x++ )
+            {
+                for( int y = -1; y <= 1; y++ )
+                {
+                    vec2 xyOff = vec2( x, y) * EPSILON;
+                    vec4 shadowPos = texture(uShadowTex, lightPos.xy + xyOff );
+                    
+                    float alpha = shadowPos.a;
+
+                    shadowPos = uLightSpace * vec4(shadowPos.xyz, 1.0);
+                    shadowPos.xyz /= shadowPos.w;
+                    
+                    float off = 0.0;
+                    if( shadowPos.z < lightPos.z - 0.002 )
+                    {
+                        off =  min(abs(lightPos.z - shadowPos.z) * 30.0, 1.0);
+
+                    }
+
+                    factor += off * alpha;
+                }
+            }
+
+            factor = factor / 9.0;
+
+            float rad = length(lightPos.xy - vec2(0.5, 0.5));
+
+            rad = smoothstep(0.4, 0.5, rad);
+            rad *= rad;
+
+            factor = factor * (1.0 - rad);
+
+            return factor;
+
+        }
+
+        void main(void) {
+            vec4 col = texture(uColTex, vTextureCoord.st);
+            vec4 pos = texture(uPosTex, vTextureCoord.st);
+
+            vec4 lightPos = uLightSpace * vec4(pos.xyz, 1.0);
+
+            lightPos.xyz = lightPos.xyz / lightPos.w;
+            lightPos.xy = lightPos.xy * 0.5 + 0.5;
+        
+            col.rgb *= 1.0 - calcShadowFactor(lightPos.xyz) * 0.4;
+
+            vec2 centerOffset = vec2(0.5, 0.5) - vTextureCoord.xy;
+            float off = dot(centerOffset, centerOffset);
+            off = 1.0 - off;
+            off = off * off;
+            off = off * 2.0;
+            float vignette = off;
+
+            col *= vignette;
+
+            color = col;
+        }
+    </script>
+
 
     <script id="copy-fs" type="x-shader/x-fragment">#version 300 es
         precision highp float;

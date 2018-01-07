@@ -16,6 +16,7 @@ var _started = true;
 var _firstUpdate = true;
 var _supportsWebGL2 = false;
 
+var stats = new Stats();
 
 //
 // start
@@ -23,7 +24,9 @@ var _supportsWebGL2 = false;
 // called when body loads
 // sets everything up
 //
-function start() {
+function start() {  
+    stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
+    document.body.appendChild( stats.dom );
 
     canvas = document.getElementById("glcanvas");
 
@@ -41,17 +44,17 @@ function start() {
         
         gl.enable(gl.CULL_FACE);
         gl.cullFace(gl.BACK);
-        gl.disable(gl.DITHER);
-
-        //gl.enable(gl.SAMPLE_ALPHA_TO_COVERAGE);
-        //gl.enable(gl.SAMPLE_COVERAGE);
-        //gl.sampleCoverage(1.0, true);
-
         gl.disable(gl.BLEND);
 
         _time = new Time();
         
-        _pullCube = new PullCube(ready);
+        _pullCube = new PullCube();
+        var isMobile = window.orientation > -1;
+        if(isMobile)
+        {
+            _pullCube._shadowsEnabled = false;
+        }
+        _pullCube.loadFace("./snoop.vbo", ready);
     }
     else
     {
@@ -61,32 +64,34 @@ function start() {
 
 function ready()
 {
-    _pullCube.init();
-    
-    canvas.onmousedown = handleMouseDown;
-    canvas.oncontextmenu = handleRightClick;
-    document.onmouseup = handleMouseUp;
-    document.onmousemove = handleMouseMove;
-    document.onmousewheel = handleMouseWheel;
-    //document.ontouchstart = handleTouchStart;
-    //document.ontouchmove = handleTouchMove;
-    document.body.addEventListener('touchmove', function(event) {
-        event.preventDefault();
-        handleTouchMove(event);
-    }, false); 
 
-    document.body.addEventListener('touchstart', function(event) {
-        event.preventDefault();
-        handleTouchStart(event);
-    }, false); 
-
-    document.body.addEventListener('touchend', function(event) {
-        event.preventDefault();
-        handleTouchEnd(event);
-    }, false); 
+    if(_firstUpdate )
+    {
+        canvas.onmousedown = handleMouseDown;
+        canvas.oncontextmenu = handleRightClick;
+        document.onmouseup = handleMouseUp;
+        document.onmousemove = handleMouseMove;
+        document.onmousewheel = handleMouseWheel;
+        //document.ontouchstart = handleTouchStart;
+        //document.ontouchmove = handleTouchMove;
+        document.body.addEventListener('touchmove', function(event) {
+            event.preventDefault();
+            handleTouchMove(event);
+        }, false); 
     
-    // start the core loop cycle
-    requestAnimationFrame(tick);     
+        document.body.addEventListener('touchstart', function(event) {
+            event.preventDefault();
+            handleTouchStart(event);
+        }, false); 
+    
+        document.body.addEventListener('touchend', function(event) {
+            event.preventDefault();
+            handleTouchEnd(event);
+        }, false); 
+
+        // start the core loop cycle
+        requestAnimationFrame(tick);  
+    }   
 }
 
 
@@ -108,8 +113,10 @@ function render( )
 //
 function tick( currentTime )
 {
+    stats.begin();
+
     _time.update(currentTime);
-    
+
     if( _started || _firstUpdate )
     {
         
@@ -123,6 +130,8 @@ function tick( currentTime )
 
         _firstUpdate = false;
     }
+
+    stats.end();
 
     requestAnimationFrame( tick );
 }
@@ -440,11 +449,16 @@ function handleTouchStart(event) {
         lastMouseX = touches[0].clientX;
         lastMouseY = touches[0].clientY;
     }
-    else if( touches.length == 2 )
+    else 
     {
-        rightclick = true;
-        lastMouseX = (touches[1].clientX + touches[0].clientX) / 2.0;
-        lastMouseY = (touches[1].clientY + touhces[0].clientY) / 2.0;
+        if( touches.length == 2 )
+        {
+            rightclick = true;
+            lastMouseX = (touches[1].clientX + touches[0].clientX) / 2.0;
+            lastMouseY = (touches[1].clientY + touhces[0].clientY) / 2.0;
+        }
+
+        handlePointerEnd(event, true);
     }
 
     lastTouchDist = -1;
