@@ -291,7 +291,7 @@ function handlePointerMove(event, newX, newY, sculpt, rotate, zoomAmount) {
 
     if( zoomAmount == null )
     {
-        zoomAmount = deltaX + deltaY;
+        zoomAmount = (deltaX + deltaY) * 0.05;
     }
 
 
@@ -451,7 +451,7 @@ function handleTouchStart(event) {
     }
     else 
     {
-        if( touches.length == 2 )
+        if( touches.length >= 2 )
         {
             rightclick = true;
             lastMouseX = (touches[1].clientX + touches[0].clientX) / 2.0;
@@ -465,7 +465,7 @@ function handleTouchStart(event) {
 
     handlePointerStart(event, 
     touches.length == 1,
-    touches.length == 2,
+    touches.length == 3,
     touches.length == 2);
 }
 
@@ -492,7 +492,7 @@ function handleTouchMove(event) {
         newX = touches[0].clientX / 1.0;
         newY = touches[0].clientY / 1.0;
     }
-    else if ( touches.length == 2 )
+    else if ( touches.length >= 2 )
     {
         leftDown = false;
         rightDown = true;
@@ -528,8 +528,8 @@ function handleTouchMove(event) {
 
     handlePointerMove(event, newX, newY, 
         touches.length == 1,
-        touches.length == 2,
-        zoomDelta * 0.2
+        touches.length == 3,
+        zoomDelta * 0.03
     );
 
     return false;
