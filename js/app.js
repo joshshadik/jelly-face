@@ -69,11 +69,13 @@ function start() {
         _time = new Time();
         
         _pullCube = new PullCube();
-        // var isMobile = window.orientation > -1;
-        // if(isMobile)
-        // {
-        //     _pullCube._shadowsEnabled = false;
-        // }
+        var isMobile = window.orientation > -1;
+        if(isMobile)
+        {
+            //_pullCube._shadowsEnabled = false;
+            _pullCube._shadowBufferSize = 768;
+            _pullCube._shadowScreenScale = 0.25;
+        }
         loadFace(modelIndex);
     }
     else

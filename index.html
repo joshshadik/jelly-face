@@ -405,6 +405,67 @@
         }
     </script>
 
+    <script id="shadowBuffer-fs" type="x-shader/x-fragment">#version 300 es
+        precision highp float;
+        precision highp sampler2D;
+
+        in vec2 vTextureCoord;
+        
+        uniform sampler2D uPosTex;
+        uniform sampler2D uShadowTex;
+
+        uniform mat4 uLightSpace;
+
+        out vec4 color;
+
+        const float EPSILON = 0.002;
+
+        vec4 calcShadow(vec2 uv, vec2 offset) {
+            vec4 color = texture(uShadowTex, uv);
+            return color; 
+        }
+
+        float calcShadowFactor( highp vec3 lightPos )
+        {
+            float factor = 0.0;
+
+            vec4 shadowPos = calcShadow(lightPos.xy, vec2(EPSILON, EPSILON));   
+            float alpha = shadowPos.a;
+
+            shadowPos = uLightSpace * vec4(shadowPos.xyz, 1.0);
+            shadowPos.xyz /= shadowPos.w;
+            
+            float off = smoothstep(0.001, 0.01, lightPos.z - shadowPos.z);
+
+            factor += off * alpha;
+
+            float rad = length(lightPos.xy - vec2(0.5, 0.5));
+
+            rad = smoothstep(0.4, 0.5, rad);
+            rad *= rad;
+
+            factor = factor * (1.0 - rad);
+
+            return factor;
+
+        }
+
+        void main(void) {
+            vec4 col = vec4(1.0, 1.0, 1.0, 1.0);
+            vec4 pos = texture(uPosTex, vTextureCoord.st);
+
+            vec4 lightPos = uLightSpace * vec4(pos.xyz, 1.0);
+
+            lightPos.xyz = lightPos.xyz / lightPos.w;
+            lightPos.xy = lightPos.xy * 0.5 + 0.5;
+
+            col.rgba *= 1.0 - calcShadowFactor(lightPos.xyz);
+
+            color = col;
+        }    
+    
+    </script>
+
     <script id="composeShadows-fs" type="x-shader/x-fragment">#version 300 es
         precision highp float;
         precision highp sampler2D;
@@ -419,58 +480,31 @@
 
         out vec4 color;
 
-        const float EPSILON = 0.002;
+        const float EPSILON = 0.0013;
 
-        float calcShadowFactor( highp vec3 lightPos )
-        {
-            float factor = 0.0;
-
-            for( int x = -1; x <= 1; x++ )
-            {
-                for( int y = -1; y <= 1; y++ )
-                {
-                    vec2 xyOff = vec2( x, y) * EPSILON;
-                    vec4 shadowPos = texture(uShadowTex, lightPos.xy + xyOff );
-                    
-                    float alpha = shadowPos.a;
-
-                    shadowPos = uLightSpace * vec4(shadowPos.xyz, 1.0);
-                    shadowPos.xyz /= shadowPos.w;
-                    
-                    float off = 0.0;
-                    if( shadowPos.z < lightPos.z - 0.002 )
-                    {
-                        off =  min(abs(lightPos.z - shadowPos.z) * 30.0, 1.0);
-
-                    }
-
-                    factor += off * alpha;
-                }
-            }
-
-            factor = factor / 9.0;
-
-            float rad = length(lightPos.xy - vec2(0.5, 0.5));
-
-            rad = smoothstep(0.4, 0.5, rad);
-            rad *= rad;
-
-            factor = factor * (1.0 - rad);
-
-            return factor;
-
+        vec4 calcShadow(vec2 uv, vec2 offset) {
+            vec4 color = vec4(0.0);
+            vec2 off1 = vec2(1.411764705882353) * offset;
+            vec2 off2 = vec2(3.2941176470588234) * offset;
+            vec2 off3 = vec2(5.176470588235294) * offset;
+            color += texture(uShadowTex, uv) * 0.1964825501511404;
+            color += texture(uShadowTex, uv + (off1 )) * 0.2969069646728344;
+            color += texture(uShadowTex, uv - (off1)) * 0.2969069646728344;
+            color += texture(uShadowTex, uv + (off2 )) * 0.09447039785044732;
+            color += texture(uShadowTex, uv - (off2 )) * 0.09447039785044732;
+            color += texture(uShadowTex, uv + (off3 )) * 0.010381362401148057;
+            color += texture(uShadowTex, uv - (off3 )) * 0.010381362401148057;
+            return color;
         }
 
         void main(void) {
             vec4 col = texture(uColTex, vTextureCoord.st);
             vec4 pos = texture(uPosTex, vTextureCoord.st);
 
-            vec4 lightPos = uLightSpace * vec4(pos.xyz, 1.0);
+            vec4 shadow = calcShadow(vTextureCoord.st, vec2(EPSILON, EPSILON));
 
-            lightPos.xyz = lightPos.xyz / lightPos.w;
-            lightPos.xy = lightPos.xy * 0.5 + 0.5;
-        
-            col.rgb *= 1.0 - calcShadowFactor(lightPos.xyz) * 0.4;
+            col.rgb = col.rgb * 0.7 + col.rgb * shadow.rgb * 0.3;
+
 
             vec2 centerOffset = vec2(0.5, 0.5) - vTextureCoord.xy;
             float off = dot(centerOffset, centerOffset);
