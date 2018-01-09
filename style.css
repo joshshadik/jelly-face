@@ -33,7 +33,8 @@
 #iconRow {
     text-align: center;
 }
-#icon{
+
+.icon{
     position: relative;
     width: 100%;
     max-width: 7.0vh;

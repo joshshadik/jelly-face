@@ -19,7 +19,7 @@ class Material {
             
             if (!gl.getProgramParameter(this.shaderProgram, gl.LINK_STATUS)) 
             {
-                alert("Unable to initialize the shader program: " + gl.getProgramInfoLog(shader));
+                alert("Unable to initialize the shader program: " + gl.getProgramInfoLog(this.shaderProgram));
             }
         }
         
@@ -208,6 +208,23 @@ class Material {
         }
 
         gl.shaderSource(shader, theSource);
+
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            alert("An error occurred compiling the shaders: " + gl.getShaderInfoLog(shader));
+            return null;
+        }
+
+        return shader;
+    }
+
+
+    static createShader(source, glType)
+    {
+        var shader = gl.createShader(glType);
+
+        gl.shaderSource(shader, source);
 
         gl.compileShader(shader);
 

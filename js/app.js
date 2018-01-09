@@ -16,6 +16,8 @@ var _started = true;
 var _firstUpdate = true;
 var _supportsWebGL2 = false;
 
+var shaders = null;
+
 var stats = new Stats();
 
 var models = [
@@ -67,7 +69,40 @@ function start() {
         gl.disable(gl.BLEND);
 
         _time = new Time();
-        
+
+        var shaderPath = "./shaders/gles20";
+        if( _supportsWebGL2 )
+        {
+            shaderPath = "./shaders/gles30"
+        }
+
+        shaders = new ShaderLoader(shaderPath, "./shaders/util");
+
+        shaders.load('composeFS',       'compose',      'fragment');
+        shaders.load('copyFS',          'copy',         'fragment');
+        shaders.load('faceVS',          'face',         'vertex');
+        shaders.load('floorVS',         'floor',        'vertex');
+        shaders.load('grabVS',          'grab',         'vertex');
+        shaders.load('initPosVS',       'initPos',      'vertex');
+        shaders.load('posFS',           'pos',          'fragment');
+        shaders.load('screenQuadVS',    'quad',         'vertex');
+        shaders.load('shadowBufferFS',  'shadowBuffer', 'fragment');
+        shaders.load('vColorFS',        'vColor',       'fragment');
+        shaders.load('velVS',           'vel',          'vertex');
+
+        if( _supportsWebGL2 )
+        {
+            shaders.load('faceFS',          'face',         'fragment');
+            shaders.load('floorFS',         'floor',        'fragment');
+        }
+        else
+        {
+            shaders.load('facePosFS',       'face',         'fragment');
+            shaders.load('floorPosFS',      'floor',        'fragment');
+            shaders.load('faceColFS',       'faceCol',      'fragment');
+            shaders.load('floorColFS',      'floorCol',     'fragment');            
+        }
+
         _pullCube = new PullCube();
         var isMobile = window.orientation > -1;
         if(isMobile)

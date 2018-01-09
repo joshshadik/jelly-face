@@ -1,7 +1,6 @@
 <!doctype html>
 <html>
 <head>
-    <meta charset="UTF-8">
     <title>Jelly Face</title>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="initial-scale=0.7, user-scalable=no">
@@ -9,18 +8,21 @@
     <link rel="stylesheet" href="./style.css">
     <link href="https://fonts.googleapis.com/css?family=PT+Sans" rel="stylesheet">
 
-    <script src="thirdparty/gl-matrix-min.js"  type="text/javascript"></script>
-    <script src="thirdparty/stats.min.js"  type="text/javascript"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 
-    <script src="js/time.js"           type="text/javascript"></script>
-    <script src="js/texture.js"        type="text/javascript"></script>
-    <script src="js/mesh.js"           type="text/javascript"></script>
-    <script src="js/framebuffer.js"    type="text/javascript"></script>
-    <script src="js/material.js"       type="text/javascript"></script>
-    <script src="js/batched-cubes.js"  type="text/javascript"></script>
-    <script src="js/vbo-loader.js"     type="text/javascript"></script>
-    <script src="js/pullcube.js" type="text/javascript"></script>
-    <script src="js/app.js" type="text/javascript"></script>
+    <script src="thirdparty/gl-matrix-min.js"></script>
+    <script src="thirdparty/stats.min.js"></script>
+    <script src="thirdparty/ShaderLoader.js"></script>
+
+    <script src="js/time.js"></script>
+    <script src="js/texture.js"></script>
+    <script src="js/mesh.js"></script>
+    <script src="js/framebuffer.js"></script>
+    <script src="js/material.js"></script>
+    <script src="js/batched-cubes.js"></script>
+    <script src="js/vbo-loader.js"></script>
+    <script src="js/pullcube.js"></script>
+    <script src="js/app.js"></script>
 
     <!-- Fragment shader program -->
 
@@ -140,13 +142,13 @@
         uniform float uImageSize;
         uniform float uDeltaTime;
 
-        in vec2 vTextureCoord;
+        in vec2 vTexcoord;
 
         out vec4 color;
 
         void main(void) {
-            vec3 lastPos = texture(uPosTex, vTextureCoord.xy).xyz;
-            vec3 vel = texture(uVelTex, vTextureCoord.xy).xyz;
+            vec3 lastPos = texture(uPosTex, vTexcoord.xy).xyz;
+            vec3 vel = texture(uVelTex, vTexcoord.xy).xyz;
 
             vec4 c = vec4(lastPos + vel * uDeltaTime, 1.0);  
             
@@ -274,12 +276,12 @@
 
         layout( location = 0) in vec3 aPos;
 
-        out vec2 vTextureCoord;
+        out vec2 vTexcoord;
 
         void main(void)
         {
             gl_Position = vec4(aPos.xy, 1.0, 1.0);
-            vTextureCoord = (aPos.xy + vec2(1.0, 1.0)) * 0.5;
+            vTexcoord = (aPos.xy + vec2(1.0, 1.0)) * 0.5;
         }
     </script>
 
@@ -323,7 +325,7 @@
         precision highp float;
         precision highp sampler2D;
 
-        in vec2 vTextureCoord;
+        in vec2 vTexcoord;
         
         uniform sampler2D uPosTex;
         uniform sampler2D uColTex;
@@ -379,8 +381,8 @@
         }
 
         void main(void) {
-            vec4 col = texture(uColTex, vTextureCoord.st);
-            vec4 pos = texture(uPosTex, vTextureCoord.st);
+            vec4 col = texture(uColTex, vTexcoord.st);
+            vec4 pos = texture(uPosTex, vTexcoord.st);
 
             /*
             vec4 lightPos = uLightSpace * vec4(pos.xyz, 1.0);
@@ -392,7 +394,7 @@
             col.rgb *= 1.0 - calcShadowFactor(lightPos.xyz) * 0.4;
             */
 
-            vec2 centerOffset = vec2(0.5, 0.5) - vTextureCoord.xy;
+            vec2 centerOffset = vec2(0.5, 0.5) - vTexcoord.xy;
             float off = dot(centerOffset, centerOffset);
             off = 1.0 - off;
             off = off * off;
@@ -409,7 +411,7 @@
         precision highp float;
         precision highp sampler2D;
 
-        in vec2 vTextureCoord;
+        in vec2 vTexcoord;
         
         uniform sampler2D uPosTex;
         uniform sampler2D uShadowTex;
@@ -452,7 +454,7 @@
 
         void main(void) {
             vec4 col = vec4(1.0, 1.0, 1.0, 1.0);
-            vec4 pos = texture(uPosTex, vTextureCoord.st);
+            vec4 pos = texture(uPosTex, vTexcoord.st);
 
             vec4 lightPos = uLightSpace * vec4(pos.xyz, 1.0);
 
@@ -470,7 +472,7 @@
         precision highp float;
         precision highp sampler2D;
 
-        in vec2 vTextureCoord;
+        in vec2 vTexcoord;
         
         uniform sampler2D uPosTex;
         uniform sampler2D uColTex;
@@ -498,15 +500,15 @@
         }
 
         void main(void) {
-            vec4 col = texture(uColTex, vTextureCoord.st);
-            vec4 pos = texture(uPosTex, vTextureCoord.st);
+            vec4 col = texture(uColTex, vTexcoord.st);
+            vec4 pos = texture(uPosTex, vTexcoord.st);
 
-            vec4 shadow = calcShadow(vTextureCoord.st, vec2(EPSILON, EPSILON));
+            vec4 shadow = calcShadow(vTexcoord.st, vec2(EPSILON, EPSILON));
 
             col.rgb = col.rgb * 0.7 + col.rgb * shadow.rgb * 0.3;
 
 
-            vec2 centerOffset = vec2(0.5, 0.5) - vTextureCoord.xy;
+            vec2 centerOffset = vec2(0.5, 0.5) - vTexcoord.xy;
             float off = dot(centerOffset, centerOffset);
             off = 1.0 - off;
             off = off * off;
@@ -523,14 +525,14 @@
     <script id="copy-fs" type="x-shader/x-fragment">#version 300 es
         precision highp float;
 
-        in vec2 vTextureCoord;
+        in vec2 vTexcoord;
 
         uniform sampler2D uCopyTex;
 
         out vec4 color;
 
         void main(void) {
-            vec4 col = texture(uCopyTex, vTextureCoord.st);
+            vec4 col = texture(uCopyTex, vTexcoord.st);
             color = col;
         }
     </script>
@@ -547,12 +549,12 @@
     <div>
         <div id="iconContainer">
             <div id="iconRow">
-                <input id="icon" onclick="loadFace(0);" type="image" src="./icons/snoop.png" />
-                <input id="icon" onclick="loadFace(1);" type="image" src="./icons/charlize.png" />
-                <input id="icon" onclick="loadFace(2);" type="image" src="./icons/jackie.png" />
-                <input id="icon" onclick="loadFace(3);" type="image" src="./icons/shatner.png" />
-                <input id="icon" onclick="loadFace(4);" type="image" src="./icons/obama.png" />
-                <input id="icon" onclick="loadFace(5);" type="image" src="./icons/marilyn.png" />
+                <input class="icon" alt="Snoop Dogg" onclick="loadFace(0);" type="image" src="./icons/snoop.png" />
+                <input class="icon" alt="Charlize Theron" onclick="loadFace(1);" type="image" src="./icons/charlize.png" />
+                <input class="icon" alt="Jackie Chan" onclick="loadFace(2);" type="image" src="./icons/jackie.png" />
+                <input class="icon" alt="William Shatner" onclick="loadFace(3);" type="image" src="./icons/shatner.png" />
+                <input class="icon" alt="Barack Obama" onclick="loadFace(4);" type="image" src="./icons/obama.png" />
+                <input class="icon" alt="Marilyn Monroe" onclick="loadFace(5);" type="image" src="./icons/marilyn.png" />
             </div>
         </div>
         <div id="overlaytext">
