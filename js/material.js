@@ -80,20 +80,10 @@ class Material {
     {
         this.vec2Attributes[attName] = [gl.getUniformLocation(this.shaderProgram, attName), value];;
     }
-
-    getVec3( attName )
-    {
-        return this.vec2Attributes[attName];
-    }
     
     setVec3( attName, value )
     {
         this.vec3Attributes[attName] = [gl.getUniformLocation(this.shaderProgram, attName), value];;
-    }
-    
-    getVec3( attName )
-    {
-        return this.vec3Attributes[attName];
     }
     
     setShader(shaderProgram )

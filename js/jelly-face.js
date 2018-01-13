@@ -25,9 +25,9 @@ class JellyFace {
         this._screenFbo = null;
         this._screenColorFbo  = null;
 
-        this._copyMaterial;      // material to copy texture
-        this._posMaterial;
-        this._velMaterial;
+        this._copyMaterial = null;      // material to copy texture
+        this._posMaterial = null;
+        this._velMaterial = null;
 
         this._floorMaterials = [];
 

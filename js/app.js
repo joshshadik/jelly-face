@@ -9,7 +9,7 @@ var lastMouseY = null;
 var mouseCoord = [];
 var touches = []
 
-var _pullCube = null;
+var _jellyFace = null;
 var _time = null;
 
 var _started = true;
@@ -109,13 +109,13 @@ function start() {
             shaders.load('floorColFS',      'floorCol',     'fragment');            
         }
 
-        _pullCube = new JellyFace();
+        _jellyFace = new JellyFace();
         var isMobile = window.orientation > -1;
         if(isMobile)
         {
-            //_pullCube._shadowsEnabled = false;
-            _pullCube._shadowFboSize = 768;
-            _pullCube._shadowScreenScale = 0.25;
+            //_jellyFace._shadowsEnabled = false;
+            _jellyFace._shadowFboSize = 768;
+            _jellyFace._shadowScreenScale = 0.25;
         }
 
         shaders.shaderSetLoaded = function() {
@@ -137,7 +137,7 @@ function loadFace(index)
     isLoading = true;
     loadingElement.style.display = "";
     vertexAttributeToggler.currAttributes = 0x0;
-    _pullCube.loadFace("./assets/" + models[index], ready);
+    _jellyFace.loadFace("./assets/" + models[index], ready);
     document.getElementById("attributions").innerHTML = credits[index];
 }
 
@@ -186,7 +186,7 @@ function ready()
 //
 function render( ) 
 { 
-    _pullCube.render();
+    _jellyFace.render();
 }
 
 // 
@@ -206,11 +206,11 @@ function tick( currentTime )
         
         resize();
     
-        _pullCube.update();
+        _jellyFace.update();
         
         render();
        
-        _pullCube.postUpdate();
+        _jellyFace.postUpdate();
 
         _firstUpdate = false;
     }
@@ -317,7 +317,7 @@ function handleLoadImage( evt ) {
             return function(e) {
                 var cubeTexture = gl.createTexture();
 
-                _pullCube.handleTextureLoaded(importMagicaVoxel( e.target.result, "" ), cubeTexture );
+                _jellyFace.handleTextureLoaded(importMagicaVoxel( e.target.result, "" ), cubeTexture );
             };
         })(f);
 
@@ -355,13 +355,13 @@ function loadImageFromUrl(url, callback) {
 function loadVoxelTexture(dataSource) {
     var cubeTexture = gl.createTexture();
     var cubeImage = new Image();
-    cubeImage.onload = function() { _pullCube.handleTextureLoaded(cubeImage, cubeTexture); }
+    cubeImage.onload = function() { _jellyFace.handleTextureLoaded(cubeImage, cubeTexture); }
     cubeImage.src = dataSource;
 }
 
 
 function saveVoxelTexture() {
-    var pixels = _pullCube.getVoxTextureCPU();
+    var pixels = _jellyFace.getVoxTextureCPU();
     var bmpEncoder = new BMPEnc(pixels, JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE, true);
     var blob = new Blob([bmpEncoder.encode()], {type: "image/bmp"});
 
@@ -383,7 +383,7 @@ function resize()
     canvas.width  = displayWidth;
     canvas.height = displayHeight;
 
-    _pullCube.handleResize();
+    _jellyFace.handleResize();
   }
 }
 
@@ -401,12 +401,12 @@ function handlePointerMove(event, newX, newY, sculpt, rotate, zoomAmount) {
 
     if( zoomAmount )
     {
-        _pullCube.handleZoom(zoomAmount);
+        _jellyFace.handleZoom(zoomAmount);
     }
     
     if( rotate )
     {
-        _pullCube.handleRotate(( deltaX / window.innerWidth ), 0 ); //( deltaY / window.innerHeight ));
+        _jellyFace.handleRotate(( deltaX / window.innerWidth ), 0 ); //( deltaY / window.innerHeight ));
     }
 
     var nX = ( newX / window.innerWidth) * 2.0 - 1.0;
@@ -416,10 +416,10 @@ function handlePointerMove(event, newX, newY, sculpt, rotate, zoomAmount) {
          
         mouseCoord = vec4.fromValues( nX, nY, -1.0, 1.0);       
 
-        _pullCube.handleToolUse(nX, nY );
+        _jellyFace.handleToolUse(nX, nY );
     }
 
-    _pullCube.handleMouseMove(nX,nY);
+    _jellyFace.handleMouseMove(nX,nY);
 
 
     lastMouseX = newX;
@@ -436,7 +436,7 @@ function handlePointerStart(event, sculpt, rotate, zoom)
 
         handlePointerMove(event, lastMouseX, lastMouseY, true, false, 0);
 
-        _pullCube.startToolUse();
+        _jellyFace.startToolUse();
     }
     
 }
@@ -445,7 +445,7 @@ function handlePointerEnd(event, sculpt)
 {
     if(sculpt)
     {
-        _pullCube.endToolUse();
+        _jellyFace.endToolUse();
     }
 }
 
@@ -533,7 +533,7 @@ function handleMouseMove(event) {
 
 function handleMouseWheel(event) 
 {
-    _pullCube.handleZoom( event.wheel );
+    _jellyFace.handleZoom( event.wheel );
 }
 
 function handleRightClick(event) {
