@@ -10,5 +10,5 @@ void main(void) {
     vec3 p = vPos;
     vec3 c = vColor;
     
-    gl_FragColor = texture2D(uColorTex, vec2(vTexcoord.x, 1.0 - vTexcoord.y)) * 0.5;
+    gl_FragColor = texture2D(uColorTex, vec2(vTexcoord.x, 1.0 - vTexcoord.y));
 }

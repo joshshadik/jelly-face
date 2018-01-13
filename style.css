@@ -20,6 +20,17 @@
     font-family: 'PT Sans', sans-serif;
 }
 
+#loading{
+    position: absolute;
+    bottom: 50%;
+    left: 0%;
+    right: 0%;
+    text-align: center;
+    font-size: 3em;
+    color: black;
+    font-family: 'PT Sans', sans-serif;
+}
+
 #iconContainer {
     position: absolute;
     top: 2%;

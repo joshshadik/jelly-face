@@ -20,6 +20,10 @@ var shaders = null;
 
 var stats = new Stats();
 
+var isLoading = true;
+var loadingElement = null;
+var currLoad  = 0.0;
+
 var models = [
     "snoop",
     "charlize",
@@ -49,6 +53,8 @@ var modelIndex = 0;
 function start() {  
     stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
     document.body.appendChild( stats.dom );
+
+    loadingElement = document.getElementById("loadingText");
 
     canvas = document.getElementById("glcanvas");
 
@@ -115,6 +121,9 @@ function start() {
         shaders.shaderSetLoaded = function() {
             loadFace(modelIndex);
         }
+
+        // start the core loop cycle
+        requestAnimationFrame(tick);  
         
     }
     else
@@ -125,6 +134,8 @@ function start() {
 
 function loadFace(index)
 {
+    isLoading = true;
+    loadingElement.style.display = "";
     vertexAttributeToggler.currAttributes = 0x0;
     _pullCube.loadFace("./assets/" + models[index], ready);
     document.getElementById("attributions").innerHTML = credits[index];
@@ -135,10 +146,10 @@ function ready()
 
     if(_firstUpdate )
     {
-        canvas.onmousedown = handleMouseDown;
+        document.onmousedown = handleMouseDown;     
+        document.onmouseup = handleMouseUp;
+        document.onmousemove = handleMouseMove;
         canvas.oncontextmenu = handleRightClick;
-        canvas.onmouseup = handleMouseUp;
-        canvas.onmousemove = handleMouseMove;
         canvas.addEventListener("onmousewheel" in document ? "mousewheel" : "wheel", function(e) {
             e.wheel = e.wheelDelta ?  e.wheelDelta/40 : -e.deltaY;
             handleMouseWheel(e);
@@ -160,9 +171,11 @@ function ready()
             handleTouchEnd(event);
         }, false); 
 
-        // start the core loop cycle
-        requestAnimationFrame(tick);  
+
     }   
+
+    isLoading = false;
+    loadingElement.style.display = "none";
 }
 
 
@@ -188,7 +201,7 @@ function tick( currentTime )
 
     _time.update(currentTime);
 
-    if( _started || _firstUpdate )
+    if(!(isLoading && _firstUpdate) && (_started || _firstUpdate) )
     {
         
         resize();
@@ -200,6 +213,25 @@ function tick( currentTime )
         _pullCube.postUpdate();
 
         _firstUpdate = false;
+    }
+
+    if( isLoading)
+    {
+        currLoad = (currLoad + Time.deltaTime()) % 1.0;
+
+        var dots = Math.floor(currLoad*4.0);
+        var loadStr = "l o a d i n g ";
+        for( var d = 0; d < dots; ++d )
+        {
+            loadStr += ". ";
+        }
+        loadingElement.innerText =  loadStr;
+
+        if(_firstUpdate)
+        {
+            gl.clearColor(0.9, 0.9, 0.9, 0.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+        }
     }
 
     stats.end();

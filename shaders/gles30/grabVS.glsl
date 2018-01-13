@@ -32,7 +32,7 @@ void main(void) {
 
     float strength =  (1.0 - smoothstep(0.0, uRadius, dist));
     strength = strength * strength * strength * strength * strength;
-    float outerStrength = 1.0 - dist;
+    float outerStrength = max(1.0 - dist, 0.0);
     outerStrength = outerStrength * outerStrength;
     //outerStrength = 1.0 - outerStrength;
 
