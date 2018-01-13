@@ -137,26 +137,26 @@ function ready()
     {
         canvas.onmousedown = handleMouseDown;
         canvas.oncontextmenu = handleRightClick;
-        document.onmouseup = handleMouseUp;
-        document.onmousemove = handleMouseMove;
-        document.addEventListener("onmousewheel" in document ? "mousewheel" : "wheel", function(e) {
+        canvas.onmouseup = handleMouseUp;
+        canvas.onmousemove = handleMouseMove;
+        canvas.addEventListener("onmousewheel" in document ? "mousewheel" : "wheel", function(e) {
             e.wheel = e.wheelDelta ?  e.wheelDelta/40 : -e.deltaY;
             handleMouseWheel(e);
           });
-        //document.ontouchstart = handleTouchStart;
-        //document.ontouchmove = handleTouchMove;
-        document.body.addEventListener('touchmove', function(event) {
+
+        canvas.addEventListener('touchmove', function(event) {
             event.preventDefault();
             handleTouchMove(event);
         }, false); 
     
-        document.body.addEventListener('touchstart', function(event) {
+
+        canvas.addEventListener('touchstart', function(event) {
             event.preventDefault();
             handleTouchStart(event);
         }, false); 
     
-        document.body.addEventListener('touchend', function(event) {
-            //event.preventDefault();
+        canvas.addEventListener('touchend', function(event) {
+            event.preventDefault();
             handleTouchEnd(event);
         }, false); 
 
