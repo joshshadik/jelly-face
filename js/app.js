@@ -18,7 +18,7 @@ var _supportsWebGL2 = false;
 
 var shaders = null;
 
-var stats = new Stats();
+// var stats = new Stats();
 
 var isLoading = true;
 var loadingElement = null;
@@ -51,8 +51,8 @@ var modelIndex = 0;
 // sets everything up
 //
 function start() {  
-    stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
-    document.body.appendChild( stats.dom );
+    // stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
+    // document.body.appendChild( stats.dom );
 
     loadingElement = document.getElementById("loadingText");
 
@@ -61,7 +61,7 @@ function start() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
     
-    initWebGL(canvas);
+    initWebGL();
 
     // only continue if webgl is working properly
     if (gl) {
@@ -197,7 +197,7 @@ function render( )
 //
 function tick( currentTime )
 {
-    stats.begin();
+    // stats.begin();
 
     _time.update(currentTime);
 
@@ -234,7 +234,7 @@ function tick( currentTime )
         }
     }
 
-    stats.end();
+    // stats.end();
 
     requestAnimationFrame( tick );
 }
