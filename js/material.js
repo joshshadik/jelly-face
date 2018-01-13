@@ -7,6 +7,31 @@ var FaceCullModeEnum = {
     NONE: 3
 };
 
+
+var vertexAttributeToggler = new Object();
+vertexAttributeToggler.currAttributes = 0x0; // assume no more than 32 attributes
+vertexAttributeToggler.enable = function(attributes) {
+    var x = this.currAttributes ^ attributes;
+
+    for( var v = 0; v < 32; v += 1 )
+    {
+        var curr = ((1 << v) & this.currAttributes);
+        if( curr != ((1 << v) & attributes))
+        {
+            if( curr != 0 )
+            {
+                gl.disableVertexAttribArray(v);
+            }
+            else
+            {
+                gl.enableVertexAttribArray(v);
+            }
+        }
+    }
+
+    this.currAttributes = attributes;
+};
+
 class Material {
     constructor(vertexShader, fragmentShader) 
     {     
@@ -30,44 +55,45 @@ class Material {
         this.vec3Attributes = [];
         this.vec2Attributes = [];
 
-
         this._cullMode = FaceCullModeEnum.BACK;
+
+        this.vAttribBits = 0;
     }
     
     
-    setTexture(texName, texValue ) 
+    setTexture(attName, value ) 
     {
-        this.textureAttributes[texName] = texValue;
+        this.textureAttributes[attName] = [gl.getUniformLocation(this.shaderProgram, attName), value];
     }
     
-    setFloat( floatName, floatValue ) 
+    setFloat( attName, value ) 
     {
-        this.floatAttributes[floatName] = floatValue;
+        this.floatAttributes[attName] = [gl.getUniformLocation(this.shaderProgram, attName), value];
     }
     
-    setMatrix( matName, matValue ) 
+    setMatrix( attName, value ) 
     {
-        this.matrixAttributes[matName] = matValue;
+        this.matrixAttributes[attName] = [gl.getUniformLocation(this.shaderProgram, attName), value];;
     }
 
-    setVec2( vecName, vecValue )
+    setVec2( attName, value )
     {
-        this.vec2Attributes[vecName] = vecValue;
+        this.vec2Attributes[attName] = [gl.getUniformLocation(this.shaderProgram, attName), value];;
     }
 
-    getVec3( vecName )
+    getVec3( attName )
     {
-        return this.vec2Attributes[vecName];
+        return this.vec2Attributes[attName];
     }
     
-    setVec3( vecName, vecValue )
+    setVec3( attName, value )
     {
-        this.vec3Attributes[vecName] = vecValue;
+        this.vec3Attributes[attName] = [gl.getUniformLocation(this.shaderProgram, attName), value];;
     }
     
-    getVec3( vecName )
+    getVec3( attName )
     {
-        return this.vec3Attributes[vecName];
+        return this.vec3Attributes[attName];
     }
     
     setShader(shaderProgram )
@@ -80,7 +106,22 @@ class Material {
         var attValue = gl.getAttribLocation(this.shaderProgram, attName );
         gl.enableVertexAttribArray(attValue);
         this.vertexAttributes[attName] = attValue;
-        gl.disableVertexAttribArray(attValue);
+        if(!_supportsWebGL2)
+        {
+            gl.disableVertexAttribArray(attValue);
+        }
+        
+
+        //console.log(attValue);
+
+        this.vAttribBits = 0;
+        for( var attName in this.vertexAttributes )
+        {
+            this.vAttribBits |= 1 << this.vertexAttributes[attName];
+        }
+
+        //console.log(this.vAttribBits);
+
         return attValue;
     }
     
@@ -126,44 +167,51 @@ class Material {
         for( var attName in this.textureAttributes )
         {
             gl.activeTexture(gl.TEXTURE0 + texCount);
-            gl.bindTexture(gl.TEXTURE_2D, this.textureAttributes[attName]);
-            gl.uniform1i(gl.getUniformLocation(this.shaderProgram, attName), texCount);   
+            gl.bindTexture(gl.TEXTURE_2D, this.textureAttributes[attName][1]);
+            gl.uniform1i(this.textureAttributes[attName][0], texCount);   
               
             texCount++;
         }
         
         for( var attName in this.floatAttributes )
         {
-            gl.uniform1f( gl.getUniformLocation(this.shaderProgram, attName), this.floatAttributes[attName] );           
+            gl.uniform1f( this.floatAttributes[attName][0], this.floatAttributes[attName][1] );           
         }
         
         for( var attName in this.matrixAttributes )
         {
-            gl.uniformMatrix4fv( gl.getUniformLocation( this.shaderProgram, attName ), false, this.matrixAttributes[attName] );
+            gl.uniformMatrix4fv( this.matrixAttributes[attName][0], false, this.matrixAttributes[attName][1] );
         }
         
         for( var attName in this.vec3Attributes )
         {
-            gl.uniform3fv( gl.getUniformLocation( this.shaderProgram, attName ), this.vec3Attributes[attName]) ;
+            gl.uniform3fv( this.vec3Attributes[attName][0], this.vec3Attributes[attName][1]) ;
         }
 
         for( var attName in this.vec2Attributes )
         {
-            gl.uniform2fv( gl.getUniformLocation( this.shaderProgram, attName ), this.vec2Attributes[attName]) ;
+            gl.uniform2fv( this.vec2Attributes[attName][0], this.vec2Attributes[attName][1]) ;
         }
         
-        
-        for( var attName in this.vertexAttributes )
+        if(!_supportsWebGL2)
         {
-            gl.enableVertexAttribArray( this.vertexAttributes[attName] );
+            for( var attName in this.vertexAttributes )
+            {
+                gl.enableVertexAttribArray( this.vertexAttributes[attName] );
+            }
         }
+
+        //vertexAttributeToggler.enable(this.vAttribBits);
     }
 
     unapply()
     {
-        for( var attName in this.vertexAttributes )
+        if(!_supportsWebGL2)
         {
-            gl.disableVertexAttribArray( this.vertexAttributes[attName] );
+            for( var attName in this.vertexAttributes )
+            {
+                gl.disableVertexAttribArray( this.vertexAttributes[attName] );
+            }
         }
 
         gl.enable(gl.CULL_FACE);

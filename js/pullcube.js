@@ -1,19 +1,9 @@
 "use strict";
-class PullCube {
+class JellyFace {
 
     static get RT_TEX_SIZE()
     {
         return 512;
-    }
-
-    static get CUBE_SIZE()
-    {
-        return 16;
-    }
-
-    static get SCULPT_LAYERS()
-    {
-        return 4;
     }
 
 
@@ -28,12 +18,12 @@ class PullCube {
         this._screenQuadMesh = null; // mesh to apply full-screen effects and blitting
         this._floorMesh = null;
 
-        this._rtCopyBuffer = null;   // framebuffer for copying framebuffer contents
-        this._rtPosBuffer = null;
-        this._rtVelBuffer = null;
+        this._copyFbo = null;   // framebuffer for copying framebuffer contents
+        this._posFbo = null;
+        this._velFbo = null;
 
-        this._screenBuffer = null;
-        this._screenColorBuffer  = null;
+        this._screenFbo = null;
+        this._screenColorFbo  = null;
 
         this._copyMaterial;      // material to copy texture
         this._posMaterial;
@@ -65,11 +55,11 @@ class PullCube {
         this._faceLoaded = false;
         this._faceColorSize = 4096;
         
-        this._shadowBufferSize = 2048;
+        this._shadowFboSize = 2048;
         this._shadowScreenScale = 0.5;
 
-        this._shadowBuffer = null;
-        this._shadowScreenBuffer = null;
+        this._shadowFbo = null;
+        this._shadowScreenFbo = null;
 
         this._shadowScreenMaterial = null;
 
@@ -82,6 +72,8 @@ class PullCube {
         this._lightMVP = [];
 
         this._shadowsEnabled = true;
+
+        this.vColorFS = null;
     }
 
 
@@ -92,15 +84,30 @@ class PullCube {
         var self = this;
         var meshPath = path + ".vbo";
         var imgPath = path + ".jpg";
+        self.init();
+
         loadVBOFromURL(meshPath, 24, bufLayout, function(mesh) {
             self._faceMesh = mesh;
-            self._faceColorBuffer = new Framebuffer(
-                [new Texture(self._faceColorSize, self._faceColorSize, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE )], null,
-                self._faceColorSize, self._faceColorSize
-            );
 
-            loadImageFromUrl(imgPath, function() {
-                self.init();
+            // initialize data into vox texture
+            var initPosVS = Material.createShader(shaders.vs.initPos, gl.VERTEX_SHADER);
+            var initDataMaterial = new Material( initPosVS, self.vColorFS );
+            initDataMaterial.addVertexAttribute("aPos");
+            initDataMaterial.addVertexAttribute("aVertexID");
+            initDataMaterial.setMatrix("uPMatrix", self._pMatrix );
+            initDataMaterial.setMatrix("uVMatrix", self._vMatrix );
+            initDataMaterial.setMatrix("uMMatrix", self._mMatrix );
+            initDataMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE);
+            
+            gl.viewport(0, 0, JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE);
+            gl.clearColor(0.0, 0.0, 0.0, 0.0);
+            
+            self.renderDataBuffer( self._posFbo.fbo(), initDataMaterial, self._faceMesh, gl.POINTS );
+            
+            gl.bindFramebuffer( gl.FRAMEBUFFER, null ); 
+            gl.viewport(0, 0, canvas.width, canvas.height);
+
+            loadImageFromUrl(imgPath, function() {           
                 readyCallback();
             });
 
@@ -202,33 +209,38 @@ class PullCube {
         var texelData = formats["texelData"];
         var internalFormat = formats["internalFormat"];
     
-        this._rtPosBuffer = new Framebuffer(
-            [new Texture(PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData)], null,
-            PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE
+        this._posFbo = new Framebuffer(
+            [new Texture(JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData)], null,
+            JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE
         );
 
-        this._rtVelBuffer = new Framebuffer(
-            [new Texture(PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData)], null,
-            PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE
+        this._velFbo = new Framebuffer(
+            [new Texture(JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData)], null,
+            JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE
         );
 
-        this._rtCopyBuffer = new Framebuffer(
-            [new Texture(PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData )], null,
-            PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE
+        this._copyFbo = new Framebuffer(
+            [new Texture(JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData )], null,
+            JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE
         );
 
         this._grabBuffer = new Framebuffer(
-            [new Texture(PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData )], null,
-            PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE
+            [new Texture(JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData )], null,
+            JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE
         );
 
         var depthInternal = _supportsWebGL2 ? gl.DEPTH_COMPONENT24 : gl.DEPTH_COMPONENT;
 
-        this._shadowBuffer = new Framebuffer(
-            [new Texture(this._shadowBufferSize, this._shadowBufferSize, internalFormat, gl.RGBA, texelData)],
-            new Texture(this._shadowBufferSize, this._shadowBufferSize, depthInternal, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT),
-            this._shadowBufferSize,
-            this._shadowBufferSize
+        this._shadowFbo = new Framebuffer(
+            [new Texture(this._shadowFboSize, this._shadowFboSize, internalFormat, gl.RGBA, texelData)],
+            new Texture(this._shadowFboSize, this._shadowFboSize, depthInternal, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT),
+            this._shadowFboSize,
+            this._shadowFboSize
+        );
+
+        this._faceColorBuffer = new Framebuffer(
+            [new Texture(this._faceColorSize, this._faceColorSize, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE )], null,
+            this._faceColorSize, this._faceColorSize
         );
         
 
@@ -254,49 +266,49 @@ class PullCube {
         var velVS = Material.createShader(shaders.vs.vel, gl.VERTEX_SHADER);
         var grabVS = Material.createShader(shaders.vs.grab, gl.VERTEX_SHADER);
 
-        var vColorFS = Material.createShader(shaders.fs.vColor, gl.FRAGMENT_SHADER);
+        this.vColorFS = Material.createShader(shaders.fs.vColor, gl.FRAGMENT_SHADER);      
 
         var floorVS = Material.createShader(shaders.vs.floor, gl.VERTEX_SHADER);
         var floorFS = Material.createShader(shaders.fs.floor, gl.FRAGMENT_SHADER);
         
 
-        this._velMaterial = new Material(velVS, vColorFS);
-        this._velMaterial.setTexture("uPosTex", this._rtPosBuffer.color().native());
-        this._velMaterial.setTexture("uVelTex", this._rtVelBuffer.color().native());
+        this._velMaterial = new Material(velVS, this.vColorFS);
+        this._velMaterial.setTexture("uPosTex", this._posFbo.color().native());
+        this._velMaterial.setTexture("uVelTex", this._velFbo.color().native());
         this._velMaterial.setTexture("uGrabTex", this._grabBuffer.color().native());
         this._velMaterial.addVertexAttribute("aPos");
         this._velMaterial.addVertexAttribute("aVertexID");
 
         this._velMaterial.setFloat("uRadius", 0.25 );
         this._velMaterial.setFloat("uAspect", canvas.height / canvas.width);   
-        this._velMaterial.setFloat("uImageSize", PullCube.RT_TEX_SIZE);
+        this._velMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE);
 
         this._posMaterial = new Material(quadVS, posFS);
-        this._posMaterial.setTexture("uPosTex", this._rtPosBuffer.color().native());
-        this._posMaterial.setTexture("uVelTex", this._rtVelBuffer.color().native());
+        this._posMaterial.setTexture("uPosTex", this._posFbo.color().native());
+        this._posMaterial.setTexture("uVelTex", this._velFbo.color().native());
         this._posMaterial.addVertexAttribute("aPos");
-        this._posMaterial.setFloat("uImageSize", PullCube.RT_TEX_SIZE);
+        this._posMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE);
 
-        this._grabMaterial = new Material(grabVS, vColorFS);
-        this._grabMaterial.setTexture("uPosTex", this._rtPosBuffer.color().native());
+        this._grabMaterial = new Material(grabVS, this.vColorFS);
+        this._grabMaterial.setTexture("uPosTex", this._posFbo.color().native());
         this._grabMaterial.addVertexAttribute("aVertexID");
 
         this._grabMaterial.setFloat("uRadius", 0.25 );
         this._grabMaterial.setFloat("uAspect", canvas.height / canvas.width);   
-        this._grabMaterial.setFloat("uImageSize", PullCube.RT_TEX_SIZE);
+        this._grabMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE);
         
         // material to copy 1 texture into another
         this._copyMaterial = new Material(quadVS, copyFS);   
-        this._copyMaterial.setTexture("uCopyTex", this._rtCopyBuffer.color().native() );
+        this._copyMaterial.setTexture("uCopyTex", this._copyFbo.color().native() );
         this._copyMaterial.addVertexAttribute("aPos");
 
         this._composeMaterial = new Material(quadVS, composeFS);
-        this._composeMaterial.setTexture("uShadowTex", this._shadowScreenBuffer.color().native());
+        this._composeMaterial.setTexture("uShadowTex", this._shadowScreenFbo.color().native());
         this._composeMaterial.addVertexAttribute("aPos");
         this._composeMaterial.setFloat("uAspect", canvas.height / canvas.width);
 
         this._shadowScreenMaterial = new Material(quadVS, shadowScreenFS);
-        this._shadowScreenMaterial.setTexture("uShadowTex", this._shadowBuffer.color().native());
+        this._shadowScreenMaterial.setTexture("uShadowTex", this._shadowFbo.color().native());
         this._shadowScreenMaterial.addVertexAttribute("aPos");
         this._shadowScreenMaterial.setFloat("uAspect", canvas.height / canvas.width);
 
@@ -312,23 +324,7 @@ class PullCube {
             this._floorMaterials[i].setMatrix("uMMatrix", this._mMatrix );
         }
         
-        // initialize data into vox texture
-        var initPosVS = Material.createShader(shaders.vs.initPos, gl.VERTEX_SHADER);
-        var initDataMaterial = new Material( initPosVS, vColorFS );
-        initDataMaterial.addVertexAttribute("aPos");
-        initDataMaterial.addVertexAttribute("aVertexID");
-        initDataMaterial.setMatrix("uPMatrix", this._pMatrix );
-        initDataMaterial.setMatrix("uVMatrix", this._vMatrix );
-        initDataMaterial.setMatrix("uMMatrix", this._mMatrix );
-        initDataMaterial.setFloat("uImageSize", PullCube.RT_TEX_SIZE);
-        
-        gl.viewport(0, 0, PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE);
-        gl.clearColor(0.0, 0.0, 0.0, 0.0);
-        
-        this.renderDataBuffer( this._rtPosBuffer.fbo(), initDataMaterial, this._faceMesh, gl.POINTS );
-        
-        gl.bindFramebuffer( gl.FRAMEBUFFER, null ); 
-        gl.viewport(0, 0, canvas.width, canvas.height);
+
     }
 
     //
@@ -360,10 +356,10 @@ class PullCube {
                 this._faceMaterials[i].addVertexAttribute("aPos");
             }
             this._faceMaterials[i].setTexture("uColorTex", this._faceColorBuffer.color().native());
-            this._faceMaterials[i].setTexture("uPosTex", this._rtPosBuffer.color().native());
-            this._faceMaterials[i].setTexture("uVelTex", this._rtVelBuffer.color().native());
+            this._faceMaterials[i].setTexture("uPosTex", this._posFbo.color().native());
+            this._faceMaterials[i].setTexture("uVelTex", this._velFbo.color().native());
             this._faceMaterials[i].setVec2("uTexelSize", [1.0 / this._faceColorBuffer._width, 1.0 / this._faceColorBuffer._height ])
-            this._faceMaterials[i].setFloat("uImageSize", PullCube.RT_TEX_SIZE);
+            this._faceMaterials[i].setFloat("uImageSize", JellyFace.RT_TEX_SIZE);
 
             this._faceMaterials[i].setMatrix("uPMatrix", this._pMatrix );
             this._faceMaterials[i].setMatrix("uVMatrix", this._vMatrix );
@@ -407,26 +403,26 @@ class PullCube {
 
         var depthTex = new Texture(width, height, depthInternal, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT);
         
-        if( this._screenBuffer )
+        if( this._screenFbo )
         {
-            this._screenBuffer.setup( colorTexs, depthTex, width, height );
+            this._screenFbo.setup( colorTexs, depthTex, width, height );
         }
         else
         {
-            this._screenBuffer = new Framebuffer( colorTexs, depthTex, width, height );
+            this._screenFbo = new Framebuffer( colorTexs, depthTex, width, height );
         }
 
         if(!_supportsWebGL2 )
         {
             var screenColorTex = [new Texture(width, height, gl.RGBA, gl.RGBA, texelData)];
 
-            if( this._screenColorBuffer )
+            if( this._screenColorFbo )
             {
-                this._screenColorBuffer.setup( screenColorTex, depthTex, width, height );
+                this._screenColorFbo.setup( screenColorTex, depthTex, width, height );
             }
             else
             {
-                this._screenColorBuffer = new Framebuffer( screenColorTex, depthTex, width, height );
+                this._screenColorFbo = new Framebuffer( screenColorTex, depthTex, width, height );
             }
         }
 
@@ -434,13 +430,13 @@ class PullCube {
         var shadowHeight = height * this._shadowScreenScale;
         var shadowTex = [new Texture(shadowWidth, shadowHeight, gl.RGBA, gl.RGBA, texelData, gl.LINEAR, gl.LINEAR)];
         var shadowDepth = new Texture(shadowWidth, shadowHeight, depthInternal, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT);
-        if( this._shadowScreenBuffer)
+        if( this._shadowScreenFbo)
         {
-            this._shadowScreenBuffer.setup(shadowTex, shadowDepth, shadowWidth, shadowHeight);
+            this._shadowScreenFbo.setup(shadowTex, shadowDepth, shadowWidth, shadowHeight);
         }
         else
         {
-            this._shadowScreenBuffer = new Framebuffer(shadowTex, shadowDepth, shadowWidth, shadowHeight);
+            this._shadowScreenFbo = new Framebuffer(shadowTex, shadowDepth, shadowWidth, shadowHeight);
         }
 
         this.updateScreenBufferMaterials();
@@ -455,31 +451,31 @@ class PullCube {
         {
             if( _supportsWebGL2 )
             {
-                this._composeMaterial.setTexture("uColTex", this._screenBuffer.color(1).native());
+                this._composeMaterial.setTexture("uColTex", this._screenFbo.color(1).native());
             }
             else
             {
-                this._composeMaterial.setTexture("uColTex", this._screenColorBuffer.color(0).native());
+                this._composeMaterial.setTexture("uColTex", this._screenColorFbo.color(0).native());
             }
             
-            this._composeMaterial.setTexture("uPosTex", this._screenBuffer.color(0).native());
+            this._composeMaterial.setTexture("uPosTex", this._screenFbo.color(0).native());
             this._composeMaterial.setFloat("uAspect", height / width);
 
-            this._composeMaterial.setTexture("uShadowTex", this._shadowScreenBuffer.color().native());
+            this._composeMaterial.setTexture("uShadowTex", this._shadowScreenFbo.color().native());
         }
 
         if( this._shadowScreenMaterial )
         {           
             if( _supportsWebGL2 )
             {
-                this._shadowScreenMaterial.setTexture("uColTex", this._screenBuffer.color(1).native());
+                this._shadowScreenMaterial.setTexture("uColTex", this._screenFbo.color(1).native());
             }
             else
             {
-                this._shadowScreenMaterial.setTexture("uColTex", this._screenColorBuffer.color(0).native());
+                this._shadowScreenMaterial.setTexture("uColTex", this._screenColorFbo.color(0).native());
             }
 
-            this._shadowScreenMaterial.setTexture("uPosTex", this._screenBuffer.color(0).native());
+            this._shadowScreenMaterial.setTexture("uPosTex", this._screenFbo.color(0).native());
             this._shadowScreenMaterial.setFloat("uAspect", height / width);
         }
 
@@ -491,7 +487,7 @@ class PullCube {
 
         if( this._grabMaterial )
         {
-            this._grabMaterial.setTexture("uScreenPosTex", this._screenBuffer.color(0).native());
+            this._grabMaterial.setTexture("uScreenPosTex", this._screenFbo.color(0).native());
         }
     }
 
@@ -510,7 +506,7 @@ class PullCube {
 
         this._copyMaterial.unapply();
         
-        this._copyMaterial.setTexture("uCopyTex", this._rtCopyBuffer.color().native() );
+        this._copyMaterial.setTexture("uCopyTex", this._copyFbo.color().native() );
         
         Framebuffer.bindDefault();
     }
@@ -542,7 +538,7 @@ class PullCube {
     renderDataBuffer( dataBuffer, dataMaterial, mesh, primitive = gl.TRIANGLES )
     {    
         // render data into copy texture
-        gl.bindFramebuffer( gl.FRAMEBUFFER, this._rtCopyBuffer.fbo() );
+        gl.bindFramebuffer( gl.FRAMEBUFFER, this._copyFbo.fbo() );
         gl.clear( gl.COLOR_BUFFER_BIT );
         
         dataMaterial.apply();     
@@ -566,14 +562,14 @@ class PullCube {
     //
     renderParticleData(deltaTime) 
     {
-        gl.viewport(0, 0, PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE);
+        gl.viewport(0, 0, JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE);
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
         
         this._posMaterial.setFloat("uDeltaTime", deltaTime );
         this._velMaterial.setFloat("uDeltaTime", deltaTime );
 
-        this.renderDataBuffer( this._rtVelBuffer.fbo(), this._velMaterial, this._faceMesh, gl.POINTS );
-        this.renderDataBuffer( this._rtPosBuffer.fbo(), this._posMaterial, this._screenQuadMesh );
+        this.renderDataBuffer( this._velFbo.fbo(), this._velMaterial, this._faceMesh, gl.POINTS );
+        this.renderDataBuffer( this._posFbo.fbo(), this._posMaterial, this._screenQuadMesh );
         
         Framebuffer.bindDefault();
     }
@@ -583,7 +579,7 @@ class PullCube {
         this._faceMaterials[0].setMatrix("uPMatrix", this._lightPerspective);
         this._faceMaterials[0].setMatrix("uVMatrix", this._lightView);
 
-        this._shadowBuffer.bind();
+        this._shadowFbo.bind();
         gl.clearColor( 0.0, 0.0, 0.0, 0.0);
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
 
@@ -642,20 +638,23 @@ class PullCube {
         gl.viewport(0, 0, 512, 512);
         //gl.clear( gl.COLOR_BUFFER_BIT );
     
-        this._copyMaterial.setTexture("uCopyTex", this._shadowBuffer.color().native() );
+        this._copyMaterial.setTexture("uCopyTex", this._shadowFbo.color().native() );
         this._copyMaterial.apply();   
         this._screenQuadMesh.render();
         this._copyMaterial.unapply();
         
-        this._copyMaterial.setTexture("uCopyTex", this._rtCopyBuffer.color().native() );
-        //this.blit( this._rtPosBuffer.color().native(), null, 512, 512);
+        this._copyMaterial.setTexture("uCopyTex", this._copyFbo.color().native() );
+        //this.blit( this._posFbo.color().native(), null, 512, 512);
     }
 
     render()
     {   
-        this.renderParticleData( Time.deltaTime );
+        if(this._faceLoaded)
+        {
+            this.renderParticleData( Time.deltaTime );
+        }
 
-        this._screenBuffer.bind();
+        this._screenFbo.bind();
         if( _supportsWebGL2 )
         {
             gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
@@ -681,7 +680,7 @@ class PullCube {
 
             if(!_supportsWebGL2 )
             {
-                this._screenColorBuffer.bind();
+                this._screenColorFbo.bind();
         
                 gl.clearColor( 0.5, 0.5, 0.5, 0.0 );
                 gl.clear(gl.COLOR_BUFFER_BIT);
@@ -704,7 +703,7 @@ class PullCube {
                 this.renderShadows();
             }
 
-            this._shadowScreenBuffer.bind();
+            this._shadowScreenFbo.bind();
             gl.clearColor( 1.0, 1.0, 1.0, 1.0 );
             gl.clear( gl.COLOR_BUFFER_BIT );
             this._shadowScreenMaterial.apply();
@@ -786,7 +785,7 @@ class PullCube {
 
     startToolUse()
     {
-        gl.viewport(0, 0, PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE);
+        gl.viewport(0, 0, JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE);
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
         
         this.renderDataBuffer( this._grabBuffer.fbo(), this._grabMaterial, this._faceMesh, gl.POINTS );
@@ -796,7 +795,7 @@ class PullCube {
 
     endToolUse()
     {
-        gl.viewport(0, 0, PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE);
+        gl.viewport(0, 0, JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE);
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
 
         gl.bindFramebuffer( gl.FRAMEBUFFER, this._grabBuffer.fbo() );
@@ -828,10 +827,10 @@ class PullCube {
     }
 
     getVoxTextureCPU() {
-        this._rtPosBuffer.bind();
-        var pixels = new Uint8Array(PullCube.RT_TEX_SIZE*PullCube.RT_TEX_SIZE*4);
+        this._posFbo.bind();
+        var pixels = new Uint8Array(JellyFace.RT_TEX_SIZE*JellyFace.RT_TEX_SIZE*4);
 
-        gl.readPixels(0, 0, PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        gl.readPixels(0, 0, JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
         Framebuffer.bindDefault();
 

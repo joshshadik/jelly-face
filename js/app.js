@@ -103,15 +103,19 @@ function start() {
             shaders.load('floorColFS',      'floorCol',     'fragment');            
         }
 
-        _pullCube = new PullCube();
+        _pullCube = new JellyFace();
         var isMobile = window.orientation > -1;
         if(isMobile)
         {
             //_pullCube._shadowsEnabled = false;
-            _pullCube._shadowBufferSize = 768;
+            _pullCube._shadowFboSize = 768;
             _pullCube._shadowScreenScale = 0.25;
         }
-        loadFace(modelIndex);
+
+        shaders.shaderSetLoaded = function() {
+            loadFace(modelIndex);
+        }
+        
     }
     else
     {
@@ -121,6 +125,7 @@ function start() {
 
 function loadFace(index)
 {
+    vertexAttributeToggler.currAttributes = 0x0;
     _pullCube.loadFace("./assets/" + models[index], ready);
     document.getElementById("attributions").innerHTML = credits[index];
 }
@@ -134,7 +139,10 @@ function ready()
         canvas.oncontextmenu = handleRightClick;
         document.onmouseup = handleMouseUp;
         document.onmousemove = handleMouseMove;
-        document.onmousewheel = handleMouseWheel;
+        document.addEventListener("onmousewheel" in document ? "mousewheel" : "wheel", function(e) {
+            e.wheel = e.wheelDelta ?  e.wheelDelta/40 : -e.deltaY;
+            handleMouseWheel(e);
+          });
         //document.ontouchstart = handleTouchStart;
         //document.ontouchmove = handleTouchMove;
         document.body.addEventListener('touchmove', function(event) {
@@ -210,6 +218,7 @@ function initWebGL() {
     gl = null;
 
     try {
+        //throw "blah";
         gl = canvas.getContext("webgl2", { alpha: false });
 
         var extensions = gl.getSupportedExtensions();
@@ -321,7 +330,7 @@ function loadVoxelTexture(dataSource) {
 
 function saveVoxelTexture() {
     var pixels = _pullCube.getVoxTextureCPU();
-    var bmpEncoder = new BMPEnc(pixels, PullCube.RT_TEX_SIZE, PullCube.RT_TEX_SIZE, true);
+    var bmpEncoder = new BMPEnc(pixels, JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE, true);
     var blob = new Blob([bmpEncoder.encode()], {type: "image/bmp"});
 
     saveAs(blob, "voxsculpt.bmp");
@@ -492,7 +501,7 @@ function handleMouseMove(event) {
 
 function handleMouseWheel(event) 
 {
-    _pullCube.handleZoom( event.wheelDelta / 120 );
+    _pullCube.handleZoom( event.wheel );
 }
 
 function handleRightClick(event) {

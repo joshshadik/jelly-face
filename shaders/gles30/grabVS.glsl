@@ -30,8 +30,13 @@ void main(void) {
 
     float dist = length(off);
 
-    float strength = 1.0 - smoothstep(0.0, uRadius, dist);
+    float strength =  (1.0 - smoothstep(0.0, uRadius, dist));
     strength = strength * strength * strength * strength * strength;
+    float outerStrength = 1.0 - dist;
+    outerStrength = outerStrength * outerStrength;
+    //outerStrength = 1.0 - outerStrength;
+
+    strength = strength * 0.9 + outerStrength * 0.1;
     
     vColor = vec4(strength, 0.0, 1.0, 1.0);
 
