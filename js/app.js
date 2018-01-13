@@ -321,8 +321,8 @@ function loadImageFromUrl(url, callback) {
 }
 
 function loadVoxelTexture(dataSource) {
-    cubeTexture = gl.createTexture();
-    cubeImage = new Image();
+    var cubeTexture = gl.createTexture();
+    var cubeImage = new Image();
     cubeImage.onload = function() { _pullCube.handleTextureLoaded(cubeImage, cubeTexture); }
     cubeImage.src = dataSource;
 }

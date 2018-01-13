@@ -1,7 +1,7 @@
 "use strict";
 class JellyFace {
 
-    static get RT_TEX_SIZE()
+    static RT_TEX_SIZE()
     {
         return 512;
     }
@@ -97,9 +97,9 @@ class JellyFace {
             initDataMaterial.setMatrix("uPMatrix", self._pMatrix );
             initDataMaterial.setMatrix("uVMatrix", self._vMatrix );
             initDataMaterial.setMatrix("uMMatrix", self._mMatrix );
-            initDataMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE);
+            initDataMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
             
-            gl.viewport(0, 0, JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE);
+            gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
             gl.clearColor(0.0, 0.0, 0.0, 0.0);
             
             self.renderDataBuffer( self._posFbo.fbo(), initDataMaterial, self._faceMesh, gl.POINTS );
@@ -210,23 +210,23 @@ class JellyFace {
         var internalFormat = formats["internalFormat"];
     
         this._posFbo = new Framebuffer(
-            [new Texture(JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData)], null,
-            JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE
+            [new Texture(JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE(), internalFormat, gl.RGBA, texelData)], null,
+            JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE()
         );
 
         this._velFbo = new Framebuffer(
-            [new Texture(JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData)], null,
-            JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE
+            [new Texture(JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE(), internalFormat, gl.RGBA, texelData)], null,
+            JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE()
         );
 
         this._copyFbo = new Framebuffer(
-            [new Texture(JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData )], null,
-            JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE
+            [new Texture(JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE(), internalFormat, gl.RGBA, texelData )], null,
+            JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE()
         );
 
         this._grabBuffer = new Framebuffer(
-            [new Texture(JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE, internalFormat, gl.RGBA, texelData )], null,
-            JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE
+            [new Texture(JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE(), internalFormat, gl.RGBA, texelData )], null,
+            JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE()
         );
 
         var depthInternal = _supportsWebGL2 ? gl.DEPTH_COMPONENT24 : gl.DEPTH_COMPONENT;
@@ -281,13 +281,13 @@ class JellyFace {
 
         this._velMaterial.setFloat("uRadius", 0.25 );
         this._velMaterial.setFloat("uAspect", canvas.height / canvas.width);   
-        this._velMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE);
+        this._velMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
 
         this._posMaterial = new Material(quadVS, posFS);
         this._posMaterial.setTexture("uPosTex", this._posFbo.color().native());
         this._posMaterial.setTexture("uVelTex", this._velFbo.color().native());
         this._posMaterial.addVertexAttribute("aPos");
-        this._posMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE);
+        this._posMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
 
         this._grabMaterial = new Material(grabVS, this.vColorFS);
         this._grabMaterial.setTexture("uPosTex", this._posFbo.color().native());
@@ -295,7 +295,7 @@ class JellyFace {
 
         this._grabMaterial.setFloat("uRadius", 0.25 );
         this._grabMaterial.setFloat("uAspect", canvas.height / canvas.width);   
-        this._grabMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE);
+        this._grabMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
         
         // material to copy 1 texture into another
         this._copyMaterial = new Material(quadVS, copyFS);   
@@ -359,7 +359,7 @@ class JellyFace {
             this._faceMaterials[i].setTexture("uPosTex", this._posFbo.color().native());
             this._faceMaterials[i].setTexture("uVelTex", this._velFbo.color().native());
             this._faceMaterials[i].setVec2("uTexelSize", [1.0 / this._faceColorBuffer._width, 1.0 / this._faceColorBuffer._height ])
-            this._faceMaterials[i].setFloat("uImageSize", JellyFace.RT_TEX_SIZE);
+            this._faceMaterials[i].setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
 
             this._faceMaterials[i].setMatrix("uPMatrix", this._pMatrix );
             this._faceMaterials[i].setMatrix("uVMatrix", this._vMatrix );
@@ -562,7 +562,7 @@ class JellyFace {
     //
     renderParticleData(deltaTime) 
     {
-        gl.viewport(0, 0, JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE);
+        gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
         
         this._posMaterial.setFloat("uDeltaTime", deltaTime );
@@ -651,7 +651,7 @@ class JellyFace {
     {   
         if(this._faceLoaded)
         {
-            this.renderParticleData( Time.deltaTime );
+            this.renderParticleData( Time.deltaTime() );
         }
 
         this._screenFbo.bind();
@@ -785,7 +785,7 @@ class JellyFace {
 
     startToolUse()
     {
-        gl.viewport(0, 0, JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE);
+        gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
         
         this.renderDataBuffer( this._grabBuffer.fbo(), this._grabMaterial, this._faceMesh, gl.POINTS );
@@ -795,7 +795,7 @@ class JellyFace {
 
     endToolUse()
     {
-        gl.viewport(0, 0, JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE);
+        gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
 
         gl.bindFramebuffer( gl.FRAMEBUFFER, this._grabBuffer.fbo() );
@@ -828,9 +828,9 @@ class JellyFace {
 
     getVoxTextureCPU() {
         this._posFbo.bind();
-        var pixels = new Uint8Array(JellyFace.RT_TEX_SIZE*JellyFace.RT_TEX_SIZE*4);
+        var pixels = new Uint8Array(JellyFace.RT_TEX_SIZE()*JellyFace.RT_TEX_SIZE()*4);
 
-        gl.readPixels(0, 0, JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        gl.readPixels(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE(), gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
         Framebuffer.bindDefault();
 

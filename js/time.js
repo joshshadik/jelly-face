@@ -35,17 +35,17 @@ class Time {
         this._lastFrameTime = this._currentTime;
     }
 
-    static get deltaTime()
+    static deltaTime()
     {
         return Time.instance._deltaTime;
     }
 
-    static get currentTime()
+    static currentTime()
     {
         return Time.instance._currentTime;
     }
 
-    static get lastFrameTime()
+    static lastFrameTime()
     {
         return Time.instance._lastFrameTime;
     }
