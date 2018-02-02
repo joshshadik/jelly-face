@@ -34,7 +34,7 @@ void main(void) {
     strength = strength * strength * strength * strength * strength;
     float outerStrength = max(1.0 - dist, 0.0);
     outerStrength = outerStrength * outerStrength;
-    //outerStrength = 1.0 - outerStrength;
+
 
     strength = strength * 0.9 + outerStrength * 0.1;
     
