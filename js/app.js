@@ -6,6 +6,10 @@ var rightDown = false;
 var lastMouseX = null;
 var lastMouseY = null;
 
+var lastTouchDist = -1;
+var lastTouch2X = null;
+var lastTouch2Y = null;
+
 var mouseCoord = [];
 var touches = []
 
@@ -582,7 +586,7 @@ function handleTouchEnd(event) {
     }
 }
 
-var lastTouchDist = -1;
+
 
 function handleTouchMove(event) {
     touches = event.touches;
@@ -622,17 +626,22 @@ function handleTouchMove(event) {
 
         var touchDist = Math.sqrt(distX * distX + distY * distY);
 
-        if( lastTouchDist >= 0)
+        var avgMoveX = (touches[1].clientX - lastTouch2X + touches[0].clientX - lastMouseX ) / 2.0;
+
+        if( lastTouchDist >= 0 && touchDist > avgMoveX )
         {
             zoomDelta = touchDist - lastTouchDist;
         }
 
         lastTouchDist = touchDist;
+
+        lastTouch2X = touches[1].clientX;
+        lastTouch2Y = touches[1].clientY;
     }
 
     handlePointerMove(event, newX, newY, 
         touches.length == 1,
-        touches.length == 3,
+        touches.length >= 2,
         zoomDelta * 0.03
     );
 
