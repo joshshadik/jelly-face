@@ -28,6 +28,7 @@ class JellyFace {
         this._copyMaterial = null;      // material to copy texture
         this._posMaterial = null;
         this._velMaterial = null;
+        this._vel3DMaterial = null;
 
         this._floorMaterials = [];
 
@@ -48,6 +49,7 @@ class JellyFace {
 
         this._faceMaterials = [];
         this._grabMaterial = null;
+        this._grab3DMaterial = null;
 
         this._faceColorBuffer = null;
         this._grabBuffer = null;
@@ -74,6 +76,13 @@ class JellyFace {
         this._shadowsEnabled = true;
 
         this.vColorFS = null;
+
+        this._handMaterial = null;
+        this._grabHand = new Hand();
+
+        this._handsMatrix = [];
+
+        this._using3DTool = false;
 
     }
 
@@ -175,6 +184,9 @@ class JellyFace {
         this._modelRotation = quat.fromValues(0.0, 0.0, 0.0, 1.0);
         this._modelPosition = vec3.fromValues(0.0, -0.1, 0.0);
         this._modelScale = vec3.fromValues(1.0, 1.0, 1.0);
+
+
+        mat4.fromRotationTranslationScale(this._handsMatrix, this._modelRotation, vec3.fromValues(0.0, -0.25, 0.25), vec3.fromValues(0.001, 0.001, 0.001));
         
         
         mat4.fromRotationTranslation( this._vMatrix, this._cameraRotation, this._cameraPosition );
@@ -265,12 +277,18 @@ class JellyFace {
         var shadowScreenFS = Material.createShader(shaders.fs.shadowBuffer, gl.FRAGMENT_SHADER);
         
         var velVS = Material.createShader(shaders.vs.vel, gl.VERTEX_SHADER);
+        var vel3DVS = Material.createShader(shaders.vs.vel3D, gl.VERTEX_SHADER);
+
         var grabVS = Material.createShader(shaders.vs.grab, gl.VERTEX_SHADER);
+        var grab3DVS = Material.createShader(shaders.vs.grab3D, gl.VERTEX_SHADER);
 
         this.vColorFS = Material.createShader(shaders.fs.vColor, gl.FRAGMENT_SHADER);      
 
         var floorVS = Material.createShader(shaders.vs.floor, gl.VERTEX_SHADER);
         var floorFS = Material.createShader(shaders.fs.floor, gl.FRAGMENT_SHADER);
+
+        var handVS = Material.createShader(shaders.vs.hand, gl.VERTEX_SHADER);
+        var handFS = Material.createShader(shaders.fs.hand, gl.FRAGMENT_SHADER);
         
 
         this._velMaterial = new Material(velVS, this.vColorFS);
@@ -283,6 +301,17 @@ class JellyFace {
         this._velMaterial.setFloat("uRadius", 0.25 );
         this._velMaterial.setFloat("uAspect", canvas.height / canvas.width);   
         this._velMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
+
+        this._vel3DMaterial = new Material(vel3DVS, this.vColorFS);
+        this._vel3DMaterial.setTexture("uPosTex", this._posFbo.color().native());
+        this._vel3DMaterial.setTexture("uVelTex", this._velFbo.color().native());
+        this._vel3DMaterial.setTexture("uGrabTex", this._grabBuffer.color().native());
+        this._vel3DMaterial.addVertexAttribute("aPos");
+        this._vel3DMaterial.addVertexAttribute("aVertexID");
+
+        this._vel3DMaterial.setFloat("uRadius", 0.25 );
+        this._vel3DMaterial.setFloat("uAspect", canvas.height / canvas.width);   
+        this._vel3DMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
 
         this._posMaterial = new Material(quadVS, posFS);
         this._posMaterial.setTexture("uPosTex", this._posFbo.color().native());
@@ -297,6 +326,14 @@ class JellyFace {
         this._grabMaterial.setFloat("uRadius", 0.25 );
         this._grabMaterial.setFloat("uAspect", canvas.height / canvas.width);   
         this._grabMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
+
+        this._grab3DMaterial = new Material(grab3DVS, this.vColorFS);
+        this._grab3DMaterial.setTexture("uPosTex", this._posFbo.color().native());
+        this._grab3DMaterial.addVertexAttribute("aVertexID");
+
+        this._grab3DMaterial.setFloat("uRadius", 0.25 );
+        this._grab3DMaterial.setFloat("uAspect", canvas.height / canvas.width);   
+        this._grab3DMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
         
         // material to copy 1 texture into another
         this._copyMaterial = new Material(quadVS, copyFS);   
@@ -313,6 +350,12 @@ class JellyFace {
         this._shadowScreenMaterial.addVertexAttribute("aPos");
         this._shadowScreenMaterial.setFloat("uAspect", canvas.height / canvas.width);
 
+
+        this._handMaterial = new Material(handVS, handFS);
+        this._handMaterial.addVertexAttribute("aPos");
+        this._handMaterial.setMatrix("uPMatrix", this._pMatrix);
+        this._handMaterial.setMatrix("uVMatrix", this._vMatrix);
+        this._handMaterial.setMatrix("uMMatrix", this._handsMatrix);
         
 
         this._floorMaterials = [new Material(floorVS, floorFS)];
@@ -372,9 +415,18 @@ class JellyFace {
         this._velMaterial.setMatrix("uVMatrix", this._vMatrix );
         this._velMaterial.setMatrix("uMMatrix", this._mMatrix );
 
+        this._vel3DMaterial.setMatrix("uPMatrix", this._pMatrix );
+        this._vel3DMaterial.setMatrix("uVMatrix", this._vMatrix );
+        this._vel3DMaterial.setMatrix("uMMatrix", this._mMatrix );
+
         this._grabMaterial.setMatrix("uPMatrix", this._pMatrix );
         this._grabMaterial.setMatrix("uVMatrix", this._vMatrix );
         this._grabMaterial.setMatrix("uMMatrix", this._mMatrix );
+
+        this._grab3DMaterial.setMatrix("uPMatrix", this._pMatrix );
+        this._grab3DMaterial.setMatrix("uVMatrix", this._vMatrix );
+        this._grab3DMaterial.setMatrix("uMMatrix", this._mMatrix );
+
 
         this._shadowScreenMaterial.setMatrix("uLightSpace", this._lightVP);
 
@@ -485,6 +537,12 @@ class JellyFace {
             this._velMaterial.setVec2("uCanvasSize", new Float32Array([width, height]));
             this._velMaterial.setFloat("uAspect", height / width);   
         }
+        
+        if( this._vel3DMaterial)
+        {
+            this._vel3DMaterial.setVec2("uCanvasSize", new Float32Array([width, height]));
+            this._vel3DMaterial.setFloat("uAspect", height / width);   
+        }
 
         if( this._grabMaterial )
         {
@@ -568,8 +626,9 @@ class JellyFace {
         
         this._posMaterial.setFloat("uDeltaTime", deltaTime );
         this._velMaterial.setFloat("uDeltaTime", deltaTime );
+        this._vel3DMaterial.setFloat("uDeltaTime", deltaTime );
 
-        this.renderDataBuffer( this._velFbo.fbo(), this._velMaterial, this._faceMesh, gl.POINTS );
+        this.renderDataBuffer( this._velFbo.fbo(), this._using3DTool ? this._vel3DMaterial : this._velMaterial, this._faceMesh, gl.POINTS );
         this.renderDataBuffer( this._posFbo.fbo(), this._posMaterial, this._screenQuadMesh );
         
         Framebuffer.bindDefault();
@@ -580,6 +639,9 @@ class JellyFace {
         this._faceMaterials[0].setMatrix("uPMatrix", this._lightPerspective);
         this._faceMaterials[0].setMatrix("uVMatrix", this._lightView);
 
+        this._handMaterial.setMatrix("uPMatrix", this._lightPerspective);
+        this._handMaterial.setMatrix("uVMatrix", this._lightView);
+
         this._shadowFbo.bind();
         gl.clearColor( 0.0, 0.0, 0.0, 0.0);
         gl.clear( gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT );
@@ -588,8 +650,19 @@ class JellyFace {
         this._faceMesh.render();
         this._faceMaterials[0].unapply();
 
+        if( this._grabHand != null )
+        {
+            this._handMaterial.apply();
+            this._grabHand.render();
+            this._handMaterial.unapply();
+        }
+
         this._faceMaterials[0].setMatrix("uPMatrix", this._pMatrix);
         this._faceMaterials[0].setMatrix("uVMatrix", this._vMatrix);
+
+        this._handMaterial.setMatrix("uPMatrix", this._pMatrix);
+        this._handMaterial.setMatrix("uVMatrix", this._vMatrix);
+
 
         Framebuffer.bindDefault();
     }
@@ -615,11 +688,13 @@ class JellyFace {
             // this._voxelMaterials[this._voxelMaterialIndex].setMatrix("uMMatrix", this._mMatrix );  
             // this._voxelMaterials[this._voxelMaterialIndex].setMatrix("uVMatrix", this._vMatrix );
         
-            this._velMaterial.setMatrix("uMMatrix", this._mMatrix);
-            this._velMaterial.setMatrix("uVMatrix", this._vMatrix);
+            // this._velMaterial.setMatrix("uMMatrix", this._mMatrix);
+            // this._velMaterial.setMatrix("uVMatrix", this._vMatrix);
 
-            this._grabMaterial.setMatrix("uMMatrix", this._mMatrix);
-            this._grabMaterial.setMatrix("uVMatrix", this._vMatrix);
+            // this._grabMaterial.setMatrix("uMMatrix", this._mMatrix);
+            // this._grabMaterial.setMatrix("uVMatrix", this._vMatrix);
+
+            // this._handMaterial.setMatrix("uVMatrix", this._vMatrix);
 
             var invVP = [];
             //mat4.multiply(invVP, this._vMatrix, this._mMatrix);
@@ -627,7 +702,6 @@ class JellyFace {
             mat4.invert(invVP, invVP);
 
             this._velMaterial.setMatrix("uInvMVPMatrix", invVP);
-            this._grabMaterial.setMatrix("uInvMVPMatrix", invVP);
         }
     }
 
@@ -667,6 +741,14 @@ class JellyFace {
         gl.clearColor( 0.9, 0.9, 0.9, 0.0 );
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
+        
+        if( this._grabHand != null )
+        {
+            this._handMaterial.apply();
+            this._grabHand.render();
+            this._handMaterial.unapply();
+        }
+
         if( this._faceLoaded )
         {
             this._faceMaterials[0].apply();
@@ -684,6 +766,8 @@ class JellyFace {
             this._floorMaterials[0].unapply();
     
         }
+
+
 
         if(!_supportsWebGL2 )
         {
@@ -717,6 +801,8 @@ class JellyFace {
             this._shadowScreenMaterial.unapply();
         }
 
+
+
         Framebuffer.bindDefault();
         gl.clear( gl.COLOR_BUFFER_BIT );
     
@@ -724,6 +810,7 @@ class JellyFace {
         this._composeMaterial.apply();
         this._screenQuadMesh.render();
         this._composeMaterial.unapply();
+
         
 
         //this.debugPosBuffer();
@@ -746,6 +833,9 @@ class JellyFace {
 
         this._velMaterial.setMatrix("uPMatrix", this._pMatrix);
         this._grabMaterial.setMatrix("uPMatrix", this._pMatrix);
+
+        this._handMaterial.setMatrix("uPMatrix", this._pMatrix);
+
 
         for( var i = 0; i < this._floorMaterials.length; ++i )
         {
@@ -791,17 +881,19 @@ class JellyFace {
         //quat.multiply( this._cameraRotation, horizontalRotCamera, this._cameraRotation );
     }
 
-    startToolUse()
+    startToolUse(grab3D = false)
     {
         gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
         
-        this.renderDataBuffer( this._grabBuffer.fbo(), this._grabMaterial, this._faceMesh, gl.POINTS );
+        this.renderDataBuffer( this._grabBuffer.fbo(), grab3D ? this._grab3DMaterial : this._grabMaterial, this._faceMesh, gl.POINTS );
         
         Framebuffer.bindDefault();
+
+        this._using3DTool = grab3D;
     }
 
-    endToolUse()
+    endToolUse( )
     {
         gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
@@ -845,6 +937,32 @@ class JellyFace {
         return pixels;
     }
 
+
+    updateHand(hand, startPinch) {
+        this._grabHand.setHand(hand);
+
+        if( hand != null  && this._grab3DMaterial != null && this._faceLoaded)
+        {
+            var tipPos = hand.indexFinger.tipPosition;
+
+            var tempMtx = [];
+
+            mat4.fromTranslation(tempMtx, tipPos);
+            mat4.multiply(tempMtx, this._handsMatrix, tempMtx);
+
+            var pos = [];
+
+            mat4.getTranslation(pos, tempMtx);
+
+            this._vel3DMaterial.setVec3("uGrabPos", pos);
+
+            if( startPinch )
+            {
+                this._grab3DMaterial.setVec3("uGrabPos", pos);
+                this.startToolUse(true);
+            }
+        }
+    }
 
 }
 

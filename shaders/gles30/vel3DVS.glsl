@@ -12,7 +12,7 @@ uniform sampler2D uGrabTex;
 uniform float uImageSize;
 uniform float uDeltaTime;
 
-uniform vec3 uMousePos;
+uniform vec3 uGrabPos;
 uniform float uAspect;
 uniform float uRadius;
 
@@ -37,16 +37,8 @@ void main(void) {
     vel = vel.xyz - vel.xyz * uDeltaTime * 3.0;
 
     float grab = texture(uGrabTex, uv.xy).x;
-
-    vec4 scrPos = uPMatrix * uVMatrix * vec4(pos, 1.0);
-    scrPos.xyz /= scrPos.w;
-    scrPos.xyz = scrPos.xyz * 0.5 + 0.5;
-
-    vec4 mousePos = uInvMVPMatrix * vec4(uMousePos.xy, 0.0, 1.0);
-    mousePos.xyz /= mousePos.w;
     
-    vec3 off = scrPos.xyz - vec3(uMousePos.xy, -1.0);
-    off.z = 0.0;
+    vec3 off = pos.xyz - uGrabPos;
 
     float sqDist = length(off);
 
@@ -54,9 +46,11 @@ void main(void) {
 
     // float pull = sqDist * 4.0;
     // pull = pull * pull * 50.0;
-    scrVel = scrVel * (1.0 - grab) - ( off * 3.0) * grab;
+    // scrVel *= pull;
+    scrVel = scrVel * (1.0 - grab) - ( off * 5.0) * grab;
 
-    vec4 wVel = (uInvMVPMatrix * vec4(scrVel.xyz, 0.0));
+
+    vec4 wVel = vec4(scrVel.xyz, 0.0);
     vel += wVel.xyz;
 
     vec3 adjOff =  (dPos.xyz - pos.xyz) * 2.0;

@@ -1,18 +1,6 @@
 var canvas;
 var gl;
 
-var leftDown = false;
-var rightDown = false;
-var lastMouseX = null;
-var lastMouseY = null;
-
-var lastTouchDist = -1;
-var lastTouch2X = null;
-var lastTouch2Y = null;
-
-var mouseCoord = [];
-var touches = []
-
 var _jellyFace = null;
 var _time = null;
 
@@ -78,6 +66,8 @@ function start() {
         gl.cullFace(gl.BACK);
         gl.disable(gl.BLEND);
 
+        gl.lineWidth(5);
+
         _time = new Time();
 
         var shaderPath = "./shaders/gles20";
@@ -93,12 +83,16 @@ function start() {
         shaders.load('faceVS',          'face',         'vertex');
         shaders.load('floorVS',         'floor',        'vertex');
         shaders.load('grabVS',          'grab',         'vertex');
+        shaders.load('grab3DVS',        'grab3D',       'vertex');
         shaders.load('initPosVS',       'initPos',      'vertex');
         shaders.load('posFS',           'pos',          'fragment');
         shaders.load('screenQuadVS',    'quad',         'vertex');
         shaders.load('shadowBufferFS',  'shadowBuffer', 'fragment');
         shaders.load('vColorFS',        'vColor',       'fragment');
         shaders.load('velVS',           'vel',          'vertex');
+        shaders.load('vel3DVS',         'vel3D',        'vertex');
+        shaders.load('handVS',          'hand',         'vertex');
+        shaders.load('handFS',          'hand',         'fragment');
 
         if( _supportsWebGL2 )
         {
@@ -128,6 +122,8 @@ function start() {
 
         // start the core loop cycle
         requestAnimationFrame(tick);  
+
+        Leap.loop(leapAnimate);
         
     }
     else
@@ -389,261 +385,4 @@ function resize()
 
     _jellyFace.handleResize();
   }
-}
-
-function handlePointerMove(event, newX, newY, sculpt, rotate, zoomAmount) {
-    
-
-    var deltaX = newX - lastMouseX;
-    var deltaY = newY - lastMouseY;
-
-    if( zoomAmount == null )
-    {
-        zoomAmount = (deltaX + deltaY) * 0.05;
-    }
-
-
-    if( zoomAmount )
-    {
-        _jellyFace.handleZoom(zoomAmount);
-    }
-    
-    if( rotate )
-    {
-        _jellyFace.handleRotate(( deltaX / window.innerWidth ), 0 ); //( deltaY / window.innerHeight ));
-    }
-
-    var nX = ( newX / window.innerWidth) * 2.0 - 1.0;
-    var nY = 1.0 - ( newY / window.innerHeight ) * 2.0;       
-    if( sculpt)
-    {
-         
-        mouseCoord = vec4.fromValues( nX, nY, -1.0, 1.0);       
-
-        _jellyFace.handleToolUse(nX, nY );
-    }
-
-    _jellyFace.handleMouseMove(nX,nY);
-
-
-    lastMouseX = newX;
-    lastMouseY = newY;
-}
-
-function handlePointerStart(event, sculpt, rotate, zoom)
-{    
-    if( sculpt )
-    {
-        var nX = ( (lastMouseX / window.innerWidth) ) * 2.0 - 1.0;
-        var nY = 1.0 - ( lastMouseY / ( window.innerHeight ) ) * 2.0;
-        mouseCoord = vec4.fromValues( nX, nY, -1.0, 1.0);    
-
-        handlePointerMove(event, lastMouseX, lastMouseY, true, false, 0);
-
-        _jellyFace.startToolUse();
-    }
-    
-}
-
-function handlePointerEnd(event, sculpt)
-{
-    if(sculpt)
-    {
-        _jellyFace.endToolUse();
-    }
-}
-
-function handleMouseDown(event) {
-    
-    lastMouseX = event.clientX;
-    lastMouseY = event.clientY;
-
-    var rightclick;
-    if (event.which) rightclick = (event.which == 3);
-    else if (event.button) rightclick = (event.button == 2);
-
-    var leftclick;
-    if (event.which) leftclick = (event.which == 1);
-    else if (event.button) leftclick = (event.button == 0);
-
-    if( rightclick )
-    {
-        rightDown = true;
-    }
-    else
-    {
-        leftDown = true;
-    }
-    
-    var altKey = event.altKey == 1;
-    
-    var sculpting = leftclick;
-    var rotating = rightclick && !altKey;
-    var zooming = rightclick && altKey;
-    
-    
-    handlePointerStart(event, 
-        sculpting,
-        rotating,
-        zooming
-    );
-}
-
-function handleMouseUp(event) {
-    var rightclick;
-    if (event.which) rightclick = (event.which == 3);
-    else if (event.button) rightclick = (event.button == 2);
-
-    var leftclick;
-    if (event.which) leftclick = (event.which == 1);
-    else if (event.button) leftclick = (event.button == 0);
-
-    var altKey = event.altKey == 1;
-
-    var sculpting = leftDown;
-    var rotating = rightDown && !altKey;
-    var zooming = rightDown && altKey;
-    
-    if( leftclick )
-    {
-        leftDown = false;
-    }
-    else
-    {
-        rightDown = false;
-    }
-
-    handlePointerEnd(event, 
-        sculpting && !leftDown
-    );
-}
-
-function handleMouseMove(event) {
-
-
-    var altKey = event.altKey == 1;
-
-    var sculpting = leftDown;
-    var rotating = rightDown && !altKey;
-    var zooming = rightDown && altKey;
-
-    handlePointerMove(event, event.clientX, event.clientY, 
-    sculpting, 
-    rotating, 
-    zooming ? null : 0
-    );
-}
-
-
-function handleMouseWheel(event) 
-{
-    _jellyFace.handleZoom( event.wheel );
-}
-
-function handleRightClick(event) {
-    event.preventDefault();
-    return false;
-}
-
-
-
-function handleTouchStart(event) {
-    touches = event.touches;
-
-    var rightclick = false;
-
-    if( touches.length == 1 )
-    {
-        lastMouseX = touches[0].clientX;
-        lastMouseY = touches[0].clientY;
-    }
-    else 
-    {
-        if( touches.length >= 2 )
-        {
-            rightclick = true;
-            lastMouseX = (touches[1].clientX + touches[0].clientX) / 2.0;
-            lastMouseY = (touches[1].clientY + touches[0].clientY) / 2.0;
-        }
-
-        handlePointerEnd(event, true);
-    }
-
-    lastTouchDist = -1;
-
-    handlePointerStart(event, 
-    touches.length == 1,
-    touches.length == 3,
-    touches.length == 2);
-}
-
-function handleTouchEnd(event) {
-    touches = event.touches;
-
-    if( touches.length != 1 )
-    {
-        handlePointerEnd(event, true);
-    }
-}
-
-
-
-function handleTouchMove(event) {
-    touches = event.touches;
-
-    var newX, newY;
-
-    if( touches.length  == 1 )
-    {
-        leftDown = true;
-        rightDown = false;
-        newX = touches[0].clientX / 1.0;
-        newY = touches[0].clientY / 1.0;
-    }
-    else if ( touches.length >= 2 )
-    {
-        leftDown = false;
-        rightDown = true;
-        newX = touches[0].clientX; //(touches[1].clientX + touches[0].clientX) / 2.0;
-        newY = touches[0].clientY; //(touches[1].clientY + touhces[0].clientY) / 2.0;
-    }
-    else
-    {
-        leftDown = false;
-        rightDown = false;
-        newX = lastMouseX;
-        newY = lastMouseY;
-
-        return;
-    }
-
-    var zoomDelta = 0;
-
-    if( touches.length == 2 )
-    {
-        var distX = touches[1].clientX - touches[0].clientX;
-        var distY = touches[1].clientY - touches[0].clientY;
-
-        var touchDist = Math.sqrt(distX * distX + distY * distY);
-
-        var avgMoveX = (touches[1].clientX - lastTouch2X + touches[0].clientX - lastMouseX ) / 2.0;
-
-        if( lastTouchDist >= 0 && touchDist > avgMoveX )
-        {
-            zoomDelta = touchDist - lastTouchDist;
-        }
-
-        lastTouchDist = touchDist;
-
-        lastTouch2X = touches[1].clientX;
-        lastTouch2Y = touches[1].clientY;
-    }
-
-    handlePointerMove(event, newX, newY, 
-        touches.length == 1,
-        touches.length >= 2,
-        zoomDelta * 0.03
-    );
-
-    return false;
 }
