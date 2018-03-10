@@ -917,13 +917,16 @@ class JellyFace {
 
     endToolUse(index = 0)
     {
-        gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
-        gl.clearColor(0.0, 0.0, 0.0, 0.0);
+        if( this._grabBuffers[index] != null)
+        {
+            gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
+            gl.clearColor(0.0, 0.0, 0.0, 0.0);
 
-        gl.bindFramebuffer( gl.FRAMEBUFFER, this._grabBuffers[index].fbo() );
-        gl.clear( gl.COLOR_BUFFER_BIT );
+            gl.bindFramebuffer( gl.FRAMEBUFFER, this._grabBuffers[index].fbo() );
+            gl.clear( gl.COLOR_BUFFER_BIT );
 
-        Framebuffer.bindDefault();
+            Framebuffer.bindDefault();
+        }
     }
 
     handleToolUse(nX, nY)
