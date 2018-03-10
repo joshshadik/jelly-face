@@ -322,7 +322,15 @@ function leapAnimate(frame)
         _jellyFace.updateHand(0, null, false);
         _jellyFace.updateHand(1, null, false);
 
-        _jellyFace.endToolUse(0);
-        _jellyFace.endToolUse(1);
+        for( var i = 0; i < 2; ++i )
+        {
+            if( pinchDown[i] )
+            {
+                _jellyFace.endToolUse(i);
+                pinchDown[i] = false;
+            }
+        }
+        // _jellyFace.endToolUse(0);
+        // _jellyFace.endToolUse(1);
     }
 }

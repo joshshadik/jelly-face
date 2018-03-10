@@ -787,6 +787,16 @@ class JellyFace {
     
             gl.clearColor( 0.9, 0.9, 0.9, 0.0 );
             gl.clear(gl.COLOR_BUFFER_BIT);
+
+            for( var hh = 0; hh < this._hands.length; ++hh )
+            {
+                if( this._hands[hh] != null )
+                {
+                    this._handMaterial.apply();
+                    this._hands[hh].render();
+                    this._handMaterial.unapply();
+                }
+            }
         
             if( this._faceLoaded )
             {
