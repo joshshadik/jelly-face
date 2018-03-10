@@ -52,7 +52,7 @@ class JellyFace {
         this._grab3DMaterial = null;
 
         this._faceColorBuffer = null;
-        this._grabBuffer = null;
+        this._grabBuffers = [];
 
         this._faceLoaded = false;
         this._faceColorSize = 4096;
@@ -78,7 +78,7 @@ class JellyFace {
         this.vColorFS = null;
 
         this._handMaterial = null;
-        this._grabHand = new Hand();
+        this._hands = [new Hand(), new Hand()];
 
         this._handsMatrix = [];
 
@@ -186,7 +186,7 @@ class JellyFace {
         this._modelScale = vec3.fromValues(1.0, 1.0, 1.0);
 
 
-        mat4.fromRotationTranslationScale(this._handsMatrix, this._modelRotation, vec3.fromValues(0.0, -0.25, 0.25), vec3.fromValues(0.001, 0.001, 0.001));
+        mat4.fromRotationTranslationScale(this._handsMatrix, this._modelRotation, vec3.fromValues(0.0, -0.35, 0.25), vec3.fromValues(0.001, 0.001, 0.001));
         
         
         mat4.fromRotationTranslation( this._vMatrix, this._cameraRotation, this._cameraPosition );
@@ -237,10 +237,14 @@ class JellyFace {
             JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE()
         );
 
-        this._grabBuffer = new Framebuffer(
-            [new Texture(JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE(), internalFormat, gl.RGBA, texelData )], null,
-            JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE()
-        );
+        for( var i = 0; i < 2; ++i )
+        {
+            this._grabBuffers.push(new Framebuffer(
+                [new Texture(JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE(), internalFormat, gl.RGBA, texelData )], null,
+                JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE()
+            ));
+        }
+        
 
         var depthInternal = _supportsWebGL2 ? gl.DEPTH_COMPONENT24 : gl.DEPTH_COMPONENT;
 
@@ -294,7 +298,7 @@ class JellyFace {
         this._velMaterial = new Material(velVS, this.vColorFS);
         this._velMaterial.setTexture("uPosTex", this._posFbo.color().native());
         this._velMaterial.setTexture("uVelTex", this._velFbo.color().native());
-        this._velMaterial.setTexture("uGrabTex", this._grabBuffer.color().native());
+        this._velMaterial.setTexture("uGrabTex", this._grabBuffers[0].color().native());
         this._velMaterial.addVertexAttribute("aPos");
         this._velMaterial.addVertexAttribute("aVertexID");
 
@@ -305,11 +309,12 @@ class JellyFace {
         this._vel3DMaterial = new Material(vel3DVS, this.vColorFS);
         this._vel3DMaterial.setTexture("uPosTex", this._posFbo.color().native());
         this._vel3DMaterial.setTexture("uVelTex", this._velFbo.color().native());
-        this._vel3DMaterial.setTexture("uGrabTex", this._grabBuffer.color().native());
+        this._vel3DMaterial.setTexture("uGrabTex0", this._grabBuffers[0].color().native());
+        this._vel3DMaterial.setTexture("uGrabTex1", this._grabBuffers[1].color().native());
         this._vel3DMaterial.addVertexAttribute("aPos");
         this._vel3DMaterial.addVertexAttribute("aVertexID");
 
-        this._vel3DMaterial.setFloat("uRadius", 0.25 );
+        this._vel3DMaterial.setFloat("uRadius", 0.05 );
         this._vel3DMaterial.setFloat("uAspect", canvas.height / canvas.width);   
         this._vel3DMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
 
@@ -650,12 +655,16 @@ class JellyFace {
         this._faceMesh.render();
         this._faceMaterials[0].unapply();
 
-        if( this._grabHand != null )
+        for( var hh = 0; hh < this._hands.length; ++hh )
         {
-            this._handMaterial.apply();
-            this._grabHand.render();
-            this._handMaterial.unapply();
+            if( this._hands[hh] != null )
+            {
+                this._handMaterial.apply();
+                this._hands[hh].render();
+                this._handMaterial.unapply();
+            }
         }
+
 
         this._faceMaterials[0].setMatrix("uPMatrix", this._pMatrix);
         this._faceMaterials[0].setMatrix("uVMatrix", this._vMatrix);
@@ -742,11 +751,14 @@ class JellyFace {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         
-        if( this._grabHand != null )
+        for( var hh = 0; hh < this._hands.length; ++hh )
         {
-            this._handMaterial.apply();
-            this._grabHand.render();
-            this._handMaterial.unapply();
+            if( this._hands[hh] != null )
+            {
+                this._handMaterial.apply();
+                this._hands[hh].render();
+                this._handMaterial.unapply();
+            }
         }
 
         if( this._faceLoaded )
@@ -881,24 +893,24 @@ class JellyFace {
         //quat.multiply( this._cameraRotation, horizontalRotCamera, this._cameraRotation );
     }
 
-    startToolUse(grab3D = false)
+    startToolUse(index = 0, grab3D = false)
     {
         gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
         
-        this.renderDataBuffer( this._grabBuffer.fbo(), grab3D ? this._grab3DMaterial : this._grabMaterial, this._faceMesh, gl.POINTS );
+        this.renderDataBuffer( this._grabBuffers[index].fbo(), grab3D ? this._grab3DMaterial : this._grabMaterial, this._faceMesh, gl.POINTS );
         
         Framebuffer.bindDefault();
 
         this._using3DTool = grab3D;
     }
 
-    endToolUse( )
+    endToolUse(index = 0)
     {
         gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
 
-        gl.bindFramebuffer( gl.FRAMEBUFFER, this._grabBuffer.fbo() );
+        gl.bindFramebuffer( gl.FRAMEBUFFER, this._grabBuffers[index].fbo() );
         gl.clear( gl.COLOR_BUFFER_BIT );
 
         Framebuffer.bindDefault();
@@ -938,8 +950,8 @@ class JellyFace {
     }
 
 
-    updateHand(hand, startPinch) {
-        this._grabHand.setHand(hand);
+    updateHand(index, hand, startPinch) {
+        this._hands[index].setHand(hand);
 
         if( hand != null  && this._grab3DMaterial != null && this._faceLoaded)
         {
@@ -954,12 +966,12 @@ class JellyFace {
 
             mat4.getTranslation(pos, tempMtx);
 
-            this._vel3DMaterial.setVec3("uGrabPos", pos);
+            this._vel3DMaterial.setVec3("uGrabPos" + index, pos);
 
             if( startPinch )
             {
                 this._grab3DMaterial.setVec3("uGrabPos", pos);
-                this.startToolUse(true);
+                this.startToolUse(index, true);
             }
         }
     }

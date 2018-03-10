@@ -30,15 +30,19 @@ void main(void) {
 
     float dist = length(off);
 
-    float strength =  (1.0 - smoothstep(0.0, uRadius, dist));
-    strength = strength * strength * strength * strength * strength;
+    float strength =  1.0 - (smoothstep(0.0, uRadius, dist));
+    strength = strength * strength * strength * strength;
+
+
     float outerStrength = max(1.0 - dist, 0.0);
     outerStrength = outerStrength * outerStrength;
 
 
     strength = strength * 0.9 + outerStrength * 0.1;
+
+    vColor = vec4(off, strength);
     
-    vColor = vec4(strength, 0.0, 1.0, 1.0);
+    //vColor = vec4(strength, 0.0, 1.0, 1.0);
 
     gl_Position = vec4(uv.xy*2.0 - 1.0, 0.0, 1.0);
 }

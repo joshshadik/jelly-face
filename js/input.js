@@ -14,7 +14,7 @@ var mouseCoord = [];
 var touches = [];
 
 
-var pinchDown = false;
+var pinchDown = [false, false];
 
 
 function handlePointerMove(event, newX, newY, sculpt, rotate, zoomAmount) {
@@ -274,37 +274,55 @@ function handleTouchMove(event) {
     return false;
 }
 
+function updateHand(index, frame)
+{
+    var hand = frame.hands[index];
+
+    var startPinch = false;
+
+    var strength = Math.max(hand.grabStrength, hand.pinchStrength);
+    if( strength > 0.3 )
+    {
+        if( !pinchDown[index] )
+        {
+            startPinch = true;
+            pinchDown[index] = true;
+        }
+    }
+    else
+    {
+        if( pinchDown[index])
+        {
+            _jellyFace.endToolUse(index);
+        }
+        pinchDown[index] = false;
+    }
+
+    _jellyFace.updateHand(index, hand, startPinch);
+
+}
 
 function leapAnimate(frame)
 {
     if( frame.hands.length > 0 )
     {
-        var hand0 = frame.hands[0];
-
-        var startPinch = false;
-
-        var strength = Math.max(hand0.grabStrength, hand0.pinchStrength);
-        if( strength > 0.75 )
+        updateHand(0, frame);
+        if( frame.hands.length > 1 )
         {
-            if( !pinchDown )
-            {
-                startPinch = true;
-                pinchDown = true;
-            }
+            updateHand(1, frame);
         }
         else
         {
-            if( pinchDown)
-            {
-                _jellyFace.endToolUse();
-            }
-            pinchDown = false;
+            _jellyFace.updateHand(1, null, false);
+            _jellyFace.endToolUse(1);
         }
-
-        _jellyFace.updateHand(hand0, startPinch);
     }
     else
     {
-        _jellyFace.updateHand(null, false);
+        _jellyFace.updateHand(0, null, false);
+        _jellyFace.updateHand(1, null, false);
+
+        _jellyFace.endToolUse(0);
+        _jellyFace.endToolUse(1);
     }
 }
