@@ -197,6 +197,9 @@ class JellyFace {
     initTransforms()
     {
         mat4.perspective(this._pMatrix, 45, canvas.width/canvas.height, 0.01, 50.0);
+
+        var orthoSize = 0.8;
+        mat4.ortho( this._lightPerspective, -orthoSize, orthoSize, -orthoSize, orthoSize, 1.0, 10.0 );
         
         this._cameraRotation = quat.create();
         this._cameraPosition = vec3.fromValues(0, 0.6, 1.0 );
@@ -210,22 +213,6 @@ class JellyFace {
         mat4.fromRotationTranslation( this._cameraMatrix, this._cameraRotation, this._cameraPosition );
         mat4.invert(this._vMatrix, this._cameraMatrix);
     
-        this._lightPosition = vec3.fromValues( 0.0, 3.0, 3.0 );
-        this._lightRotation = quat.create();
-        
-        quat.rotateX(this._lightRotation, this._lightRotation, -0.778);
-        // quat.rotateY(this._lightRotation, this._lightRotation, -0.3);
-        // quat.rotateX(this._lightRotation, this._lightRotation, -0.3);
-        // quat.rotateZ(this._lightRotation, this._lightRotation, -0.1);
-        
-        mat4.fromRotationTranslation( this._lightView, this._lightRotation, this._lightPosition ); 
-        mat4.invert(this._lightView, this._lightView);
-
-        var orthoSize = 2.0;
-        mat4.ortho( this._lightPerspective, -orthoSize, orthoSize, -orthoSize, orthoSize, 1.0, 10.0 );
-        //mat4.perspective(this._lightPerspective, 0.62, 1.0, 0.1, 5.0);
-
-        mat4.multiply(this._lightVP, this._lightPerspective, this._lightView);
     }
 
 
@@ -1036,6 +1023,27 @@ class JellyFace {
         this._modelScale = scale; //vec3.fromValues(1.0, 1.0, 1.0);
 
         mat4.fromRotationTranslation( this._mMatrix, this._modelRotation, this._modelPosition );
+
+
+        var forward = [];
+
+        vec3.transformQuat(forward, vec3.fromValues(0.0, 0.0, 1.0), this._modelRotation);
+        var localLightPos = [];
+
+        vec3.add(localLightPos, forward, vec3.fromValues(0.0, 1.0, 0.0));
+
+        vec3.scale(localLightPos, localLightPos, 3.0);
+
+        vec3.add(this._lightPosition, this._modelPosition, localLightPos);
+
+        quat.rotateX(this._lightRotation, quat.create(), -0.778);
+        quat.multiply(this._lightRotation, this._modelRotation, this._lightRotation);
+        
+
+        mat4.fromRotationTranslation( this._lightView, this._lightRotation, this._lightPosition );
+        mat4.invert(this._lightView, this._lightView);
+
+        mat4.multiply(this._lightVP, this._lightPerspective, this._lightView);
     }
 
     setHandRootTransform(position, rotation, scale, multiplyByCamera = false)

@@ -1,5 +1,6 @@
 var canvas;
 var gl;
+
 var vrDisplay = null;
 var frameData = null;
 
@@ -17,6 +18,8 @@ var stats = new Stats();
 var isLoading = true;
 var loadingElement = null;
 var currLoad  = 0.0;
+
+var animLoop = null;
 
 var models = [
     "snoop",
@@ -164,25 +167,27 @@ function tick( currentTime )
 
 
     if( vrDisplay && vrDisplay.isPresenting ) {
-        vrDisplay.requestAnimationFrame(tick);
+        animLoop = vrDisplay.requestAnimationFrame(tick);
 
         vrDisplay.getFrameData(frameData);
 
-        // console.log(frameData.pose.orientation);
-        // var orient = [];
-        // quat.conjugate(orient, frameData.pose.orientation);
 
-        var rotation = [];
-        quat.fromEuler(rotation, -90.0, 0.0, 0.0);
+        if( frameData.pose )
+        {
+            if( frameData.pose.position && frameData.pose.orientation )
+            {
+                var rotation = [];
+                quat.fromEuler(rotation, -90.0, 0.0, 0.0);
 
-        quat.multiply(rotation, frameData.pose.orientation, rotation);
-        var handMtx  = [];
-        _jellyFace.setHandRootTransform(frameData.pose.position, rotation, vec3.fromValues(0.001, 0.001, 0.001 ), true );
-        //_jellyFace.setHandRootMatrix(handMtx);
+                quat.multiply(rotation, frameData.pose.orientation, rotation);
+                var handMtx  = [];
+                _jellyFace.setHandRootTransform(frameData.pose.position, rotation, vec3.fromValues(0.001, 0.001, 0.001 ), true );
+            }
+        }
     }
     else
     {
-        window.requestAnimationFrame(tick);
+        animLoop = window.requestAnimationFrame(tick);
     }
 
     if(!(isLoading && _firstUpdate) && (_started || _firstUpdate) )
@@ -196,8 +201,24 @@ function tick( currentTime )
         
         if( vrDisplay && vrDisplay.isPresenting ) 
         {
-            render(frameData.leftViewMatrix, frameData.leftProjectionMatrix, [0, 0, canvas.width * 0.5, canvas.height]);
-            render(frameData.rightViewMatrix, frameData.rightProjectionMatrix, [canvas.width * 0.5, 0, canvas.width * 0.5, canvas.height]);
+            var lvm = [];
+            var rvm = [];
+
+            if(  vrDisplay.stageParameters )
+            {
+                var invStand = [];
+                mat4.invert(invStand, vrDisplay.stageParameters.sittingToStandingTransform );
+                mat4.multiply(lvm, frameData.leftViewMatrix, invStand);
+                mat4.multiply(rvm, frameData.rightViewMatrix, invStand);
+            }
+            else
+            {
+                lvm = frameData.leftViewMatrix;
+                rvm = frameData.rightViewMatrix;
+            }
+
+            render(lvm, frameData.leftProjectionMatrix, [0, 0, canvas.width * 0.5, canvas.height]);
+            render(rvm, frameData.rightProjectionMatrix, [canvas.width * 0.5, 0, canvas.width * 0.5, canvas.height]);
         }
         else
         {
@@ -347,7 +368,7 @@ function initWebGL(preserveBuffer = false) {
         }
 
         // start the core loop cycle
-        requestAnimationFrame(tick);  
+        animLoop = requestAnimationFrame(tick);  
 
         Leap.loop(leapAnimate);
         
@@ -485,20 +506,79 @@ function onVRExitPresent () {
 function onVRPresentChange () {
     resize();
     if (vrDisplay.isPresenting) {
-        if (vrDisplay.capabilities.hasExternalDisplay) {
-            _jellyFace.setModelTransform(vec3.fromValues(0.0, 1.5, 0.0), _jellyFace._modelRotation, _jellyFace._modelScale);
-            _jellyFace.setCameraTransform(vec3.fromValues(0.0, 0.0, 0.5), _jellyFace._cameraRotation);
-            _jellyFace.resetData();
-            //_jellyFace.setFloorPosition(vec3.fromValues(0.0, 0.0, 0.0));
+        var pos = null;
+        var rot = null;
+
+        window.cancelAnimationFrame(animLoop);
+        animLoop = vrDisplay.requestAnimationFrame(tick);
+
+        if( vrDisplay.capabilities.hasPosition )
+        {
+            vrDisplay.getFrameData(frameData);
+            var p = frameData.pose.position;
+            if( p )
+            {
+                pos = vec3.fromValues(p[0], p[1], p[2]);
+
+                if( vrDisplay.capabilities.hasOrientation )
+                {
+                    var forward = [0];
+                    vec3.transformQuat(forward, vec3.fromValues(0.0, 0.0, -1.0), frameData.pose.orientation);
+                    forward[1] = 0.0;
+                    vec3.normalize(forward, forward);
+
+                    rot = [];
+                    quat.rotationTo(rot, vec3.fromValues(0.0, 0.0, -1.0), forward);
+
+                    vec3.scale(forward, forward, 0.5);
+                    vec3.add(forward, forward, vec3.fromValues(0.0, -0.1, 0.0));
+                    vec3.add(pos, pos, forward);                   
+                }
+
+                if(  vrDisplay.stageParameters )
+                {
+                    var invStand = [];
+                    mat4.invert(invStand, vrDisplay.stageParameters.sittingToStandingTransform );
+
+                    var mMtx = [];
+                    mat4.fromTranslation(mMtx, pos);
+
+                    mat4.multiply(mMtx, vrDisplay.stageParameters.sittingToStandingTransform, mMtx);
+
+                    mat4.getTranslation(pos, mMtx);
+                }
+            }
         }
-    } else {
-        if (vrDisplay.capabilities.hasExternalDisplay) {         
-            _jellyFace.setModelTransform(vec3.fromValues(0.0, 0.5, 0.0), _jellyFace._modelRotation, _jellyFace._modelScale);
-            _jellyFace.setCameraTransform(vec3.fromValues(0.0, 0.6, 1.0), _jellyFace._cameraRotation);
-            //_jellyFace.setFloorPosition(vec3.fromValues(0.0, 1.0, 0.0));
-            _jellyFace.setHandRootTransform(vec3.fromValues(0.0, 0.25, 0.25), _jellyFace._modelRotation, vec3.fromValues(0.001, 0.001, 0.001));
-            _jellyFace.resetData();
+
+        if( !pos )
+        {
+            pos = vec3.fromValues(0.0, 1.4, -0.5);
         }
+
+        if( !rot )
+        {
+            rot = _jellyFace._modelRotation;
+        }
+
+        _jellyFace.setModelTransform(pos, rot, _jellyFace._modelScale);
+        _jellyFace.setCameraTransform(vec3.fromValues(0.0, 0.0, 0.0), _jellyFace._cameraRotation);
+
+        if(!vrDisplay.stageParameters )
+        {
+            _jellyFace.setFloorPosition(vec3.fromValues(pos[0], -1.0, pos[2]));
+        }
+        else
+        {
+            _jellyFace.setFloorPosition(vec3.fromValues(pos[0], 0.0, pos[2]));
+        }
+
+        _jellyFace.resetData();
+    } else {    
+        _jellyFace.setModelTransform(vec3.fromValues(0.0, 0.5, 0.0), _jellyFace._modelRotation, _jellyFace._modelScale);
+        _jellyFace.setCameraTransform(vec3.fromValues(0.0, 0.6, 1.0), _jellyFace._cameraRotation);
+        _jellyFace.setFloorPosition(vec3.fromValues(0.0, 0.0, 0.0));
+        _jellyFace.setHandRootTransform(vec3.fromValues(0.0, 0.25, 0.25), _jellyFace._modelRotation, vec3.fromValues(0.001, 0.001, 0.001));
+        _jellyFace.resetData();
     }
 }
 
