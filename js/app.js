@@ -177,7 +177,7 @@ function tick( currentTime )
             if( frameData.pose.position && frameData.pose.orientation )
             {
                 var rotation = [];
-                quat.fromEuler(rotation, -90.0, 0.0, 0.0);
+                quat.fromEuler(rotation, 90.0, 180.0, 0.0);
 
                 quat.multiply(rotation, frameData.pose.orientation, rotation);
                 var handMtx  = [];
