@@ -43,7 +43,7 @@ void main(void) {
 
     strength = strength * 0.9 + outerStrength * 0.1;
 
-    vColor = vec4(strength, 0.0, 1.0, 1.0);
+    vColor = vec4(strength, 0.0, 1.0, strength);
 
     gl_Position = vec4(uv.xy*2.0 - 1.0, 0.0, 1.0);
 }

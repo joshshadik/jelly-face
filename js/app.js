@@ -1,5 +1,7 @@
 var canvas;
 var gl;
+var vrDisplay = null;
+var frameData = null;
 
 var _jellyFace = null;
 var _time = null;
@@ -10,7 +12,7 @@ var _supportsWebGL2 = false;
 
 var shaders = null;
 
-// var stats = new Stats();
+var stats = new Stats();
 
 var isLoading = true;
 var loadingElement = null;
@@ -43,8 +45,8 @@ var modelIndex = 0;
 // sets everything up
 //
 function start() {  
-    // stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
-    // document.body.appendChild( stats.dom );
+    stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
+    document.body.appendChild( stats.dom );
 
     loadingElement = document.getElementById("loadingText");
 
@@ -53,9 +55,233 @@ function start() {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
     
-    initWebGL();
+    if (navigator.getVRDisplays) {
+        frameData = new VRFrameData();
+        navigator.getVRDisplays().then(function (displays) {
+            if (displays.length > 0) {
+                vrDisplay = displays[displays.length - 1];
+                vrDisplay.depthNear = 0.1;
+                vrDisplay.depthFar = 1024.0;
+                initWebGL(vrDisplay.capabilities.hasExternalDisplay);
+                if (vrDisplay.stageParameters &&
+                    vrDisplay.stageParameters.sizeX > 0 &&
+                    vrDisplay.stageParameters.sizeZ > 0) {
+                }
+                window.addEventListener('vrdisplaypresentchange', onVRPresentChange, false);
+                window.addEventListener('vrdisplayactivate', onVRRequestPresent, false);
+                window.addEventListener('vrdisplaydeactivate', onVRExitPresent, false);
+                document.getElementById("vrContainer").hidden = false;
+            } else {
+                initWebGL(false);
+            }
+        }, 
+        function () {
+        });
+    } else if (navigator.getVRDevices) {
+        initWebGL(false);
+    } else {
+        initWebGL(false);
+    }
 
-    // only continue if webgl is working properly
+    //initWebGL();
+}
+
+function loadFace(index)
+{
+    isLoading = true;
+    loadingElement.style.display = "";
+    vertexAttributeToggler.currAttributes = 0x0;
+    _jellyFace.loadFace("./assets/" + models[index], ready);
+    document.getElementById("attributions").innerHTML = credits[index];
+
+    if( vrDisplay && vrDisplay.isPresenting )
+    {
+        _jellyFace.setModelTransform(vec3.fromValues(0.0, 1.5, 0.0), _jellyFace._modelRotation, _jellyFace._modelScale);
+        _jellyFace.setCameraTransform(vec3.fromValues(0.0, 0.0, 1.0), _jellyFace._cameraRotation);      
+    }
+}
+
+function ready()
+{
+
+    if(_firstUpdate )
+    {
+        document.onmousedown = handleMouseDown;     
+        document.onmouseup = handleMouseUp;
+        document.onmousemove = handleMouseMove;
+        canvas.oncontextmenu = handleRightClick;
+        canvas.addEventListener("onmousewheel" in document ? "mousewheel" : "wheel", function(e) {
+            e.wheel = e.wheelDelta ?  e.wheelDelta/40 : -e.deltaY;
+            handleMouseWheel(e);
+          });
+
+        canvas.addEventListener('touchmove', function(event) {
+            event.preventDefault();
+            handleTouchMove(event);
+        }, false); 
+    
+
+        canvas.addEventListener('touchstart', function(event) {
+            event.preventDefault();
+            handleTouchStart(event);
+        }, false); 
+    
+        canvas.addEventListener('touchend', function(event) {
+            event.preventDefault();
+            handleTouchEnd(event);
+        }, false); 
+
+        window.addEventListener("resize", resize, false);
+
+    }   
+
+    isLoading = false;
+    loadingElement.style.display = "none";
+}
+
+
+//
+// render
+//
+// Draw the scene.
+//
+function render(viewMatrix = null, projMatrix = null, rect = null) 
+{ 
+    _jellyFace.render(viewMatrix, projMatrix, rect);
+}
+
+// 
+// tick
+//
+// core loop function
+// called every frame, updates & tells the scene to render
+//
+function tick( currentTime )
+{
+    stats.begin();
+
+    _time.update(currentTime);
+
+
+    if( vrDisplay && vrDisplay.isPresenting ) {
+        vrDisplay.requestAnimationFrame(tick);
+
+        vrDisplay.getFrameData(frameData);
+
+        // console.log(frameData.pose.orientation);
+        // var orient = [];
+        // quat.conjugate(orient, frameData.pose.orientation);
+
+        var rotation = [];
+        quat.fromEuler(rotation, -90.0, 0.0, 0.0);
+
+        quat.multiply(rotation, frameData.pose.orientation, rotation);
+        var handMtx  = [];
+        _jellyFace.setHandRootTransform(frameData.pose.position, rotation, vec3.fromValues(0.001, 0.001, 0.001 ), true );
+        //_jellyFace.setHandRootMatrix(handMtx);
+    }
+    else
+    {
+        window.requestAnimationFrame(tick);
+    }
+
+    if(!(isLoading && _firstUpdate) && (_started || _firstUpdate) )
+    {
+        
+        //resize();
+    
+        _jellyFace.update();
+
+        gl.clear( gl.COLOR_BUFFER_BIT );
+        
+        if( vrDisplay && vrDisplay.isPresenting ) 
+        {
+            render(frameData.leftViewMatrix, frameData.leftProjectionMatrix, [0, 0, canvas.width * 0.5, canvas.height]);
+            render(frameData.rightViewMatrix, frameData.rightProjectionMatrix, [canvas.width * 0.5, 0, canvas.width * 0.5, canvas.height]);
+        }
+        else
+        {
+            render();
+        }
+       
+        _jellyFace.postUpdate();
+
+        _firstUpdate = false;
+    }
+
+    if( isLoading)
+    {
+        currLoad = (currLoad + Time.deltaTime()) % 1.0;
+
+        var dots = Math.floor(currLoad*4.0);
+        var loadStr = "l o a d i n g ";
+        for( var d = 0; d < dots; ++d )
+        {
+            loadStr += ". ";
+        }
+        loadingElement.innerText =  loadStr;
+
+        if(_firstUpdate)
+        {
+            gl.clearColor(0.9, 0.9, 0.9, 0.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+        }
+    }
+    if( vrDisplay && vrDisplay.isPresenting ) {
+        vrDisplay.submitFrame();
+    }
+
+    stats.end();
+}
+
+
+//
+// initWebGL
+//
+// initialize WebGL, returning the GL context or null if
+// WebGL isn't available or could not be initialized.
+//
+function initWebGL(preserveBuffer = false) {
+    gl = null;
+
+    var glAttribs = {
+        alpha: false,
+        preserveDrawingBuffer: preserveBuffer
+    };
+
+    try {
+        gl = canvas.getContext("webgl2", glAttribs);
+
+        var extensions = gl.getSupportedExtensions();
+        console.log(extensions);
+
+        //gl.getExtension('WEBGL_depth_texture');
+    }
+    catch(e) {
+    }
+
+    if(gl)
+    {
+        _supportsWebGL2 = true;
+    }
+    else
+    {
+        gl = canvas.getContext("experimental-webgl", glAttribs);
+        
+        var extensions = gl.getSupportedExtensions();
+        console.log(extensions);
+
+        gl.getExtension('WEBGL_depth_texture');
+    }
+
+    console.log("supports webgl 2: " + _supportsWebGL2);
+
+    // If we don't have a GL context, give up now
+
+    if (!gl) {
+        alert("Unable to initialize WebGL. Your browser may not support it.");
+    }
+
     if (gl) {
         gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
         gl.clearDepth(1.0);                 // Clear everything
@@ -125,162 +351,6 @@ function start() {
 
         Leap.loop(leapAnimate);
         
-    }
-    else
-    {
-        alert("sorry, your browser/device does not support the webgl compabilities this application needs.")
-    }
-}
-
-function loadFace(index)
-{
-    isLoading = true;
-    loadingElement.style.display = "";
-    vertexAttributeToggler.currAttributes = 0x0;
-    _jellyFace.loadFace("./assets/" + models[index], ready);
-    document.getElementById("attributions").innerHTML = credits[index];
-}
-
-function ready()
-{
-
-    if(_firstUpdate )
-    {
-        document.onmousedown = handleMouseDown;     
-        document.onmouseup = handleMouseUp;
-        document.onmousemove = handleMouseMove;
-        canvas.oncontextmenu = handleRightClick;
-        canvas.addEventListener("onmousewheel" in document ? "mousewheel" : "wheel", function(e) {
-            e.wheel = e.wheelDelta ?  e.wheelDelta/40 : -e.deltaY;
-            handleMouseWheel(e);
-          });
-
-        canvas.addEventListener('touchmove', function(event) {
-            event.preventDefault();
-            handleTouchMove(event);
-        }, false); 
-    
-
-        canvas.addEventListener('touchstart', function(event) {
-            event.preventDefault();
-            handleTouchStart(event);
-        }, false); 
-    
-        canvas.addEventListener('touchend', function(event) {
-            event.preventDefault();
-            handleTouchEnd(event);
-        }, false); 
-
-
-    }   
-
-    isLoading = false;
-    loadingElement.style.display = "none";
-}
-
-
-//
-// render
-//
-// Draw the scene.
-//
-function render( ) 
-{ 
-    _jellyFace.render();
-}
-
-// 
-// tick
-//
-// core loop function
-// called every frame, updates & tells the scene to render
-//
-function tick( currentTime )
-{
-    // stats.begin();
-
-    _time.update(currentTime);
-
-    if(!(isLoading && _firstUpdate) && (_started || _firstUpdate) )
-    {
-        
-        resize();
-    
-        _jellyFace.update();
-        
-        render();
-       
-        _jellyFace.postUpdate();
-
-        _firstUpdate = false;
-    }
-
-    if( isLoading)
-    {
-        currLoad = (currLoad + Time.deltaTime()) % 1.0;
-
-        var dots = Math.floor(currLoad*4.0);
-        var loadStr = "l o a d i n g ";
-        for( var d = 0; d < dots; ++d )
-        {
-            loadStr += ". ";
-        }
-        loadingElement.innerText =  loadStr;
-
-        if(_firstUpdate)
-        {
-            gl.clearColor(0.9, 0.9, 0.9, 0.0);
-            gl.clear(gl.COLOR_BUFFER_BIT);
-        }
-    }
-
-    // stats.end();
-
-    requestAnimationFrame( tick );
-}
-
-
-//
-// initWebGL
-//
-// initialize WebGL, returning the GL context or null if
-// WebGL isn't available or could not be initialized.
-//
-function initWebGL() {
-    gl = null;
-
-    try {
-        //throw "blah";
-        gl = canvas.getContext("webgl2", { alpha: false });
-
-        var extensions = gl.getSupportedExtensions();
-        console.log(extensions);
-
-        //gl.getExtension('WEBGL_depth_texture');
-    }
-    catch(e) {
-    }
-
-    if(gl)
-    {
-        _supportsWebGL2 = true;
-    }
-    else
-    {
-        gl = canvas.getContext("experimental-webgl", { alpha: false });
-        
-        var extensions = gl.getSupportedExtensions();
-        console.log(extensions);
-
-        gl.getExtension('WEBGL_depth_texture');
-    }
-
-    console.log("supports webgl 2: " + _supportsWebGL2);
-
-    // If we don't have a GL context, give up now
-
-    if (!gl) {
-        alert("Unable to initialize WebGL. Your browser may not support it.");
     }
 }
 
@@ -371,18 +441,82 @@ function saveVoxelTexture() {
 
 function resize() 
 {
+    if (vrDisplay && vrDisplay.isPresenting) {
+        var leftEye = vrDisplay.getEyeParameters("left");
+        var rightEye = vrDisplay.getEyeParameters("right");
+        canvas.width = Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2;
+        canvas.height = Math.max(leftEye.renderHeight, rightEye.renderHeight);
 
-  var displayWidth  = window.innerWidth;
-  var displayHeight = window.innerHeight;
+        _jellyFace.handleResize(canvas.width/2, canvas.height);
+    }
+    else{
+        var displayWidth  = window.innerWidth;
+        var displayHeight = window.innerHeight;
 
-  // Check if the canvas is not the same size.
-  if (canvas.width  != displayWidth ||
-      canvas.height != displayHeight) {
+        // Make the canvas the same size
+        canvas.width  = displayWidth;
+        canvas.height = displayHeight;
 
-    // Make the canvas the same size
-    canvas.width  = displayWidth;
-    canvas.height = displayHeight;
+        _jellyFace.handleResize(displayWidth, displayHeight);
+    }
 
-    _jellyFace.handleResize();
-  }
 }
+
+
+function onVRRequestPresent () {
+    vrDisplay.requestPresent([{ source: canvas }]).then(function () {
+    }, function (err) {
+        var errMsg = "requestPresent failed.";
+        if (err && err.message) {
+            errMsg += "<br/>" + err.message
+        }
+        console.error(errMsg);
+    });
+}
+
+function onVRExitPresent () {
+    if (!vrDisplay.isPresenting)
+        return;
+    vrDisplay.exitPresent().then(function () {
+    }, function () {
+        console.error("exitPresent failed.");
+    });
+}
+function onVRPresentChange () {
+    resize();
+    if (vrDisplay.isPresenting) {
+        if (vrDisplay.capabilities.hasExternalDisplay) {
+            _jellyFace.setModelTransform(vec3.fromValues(0.0, 1.5, 0.0), _jellyFace._modelRotation, _jellyFace._modelScale);
+            _jellyFace.setCameraTransform(vec3.fromValues(0.0, 0.0, 0.5), _jellyFace._cameraRotation);
+            _jellyFace.resetData();
+            //_jellyFace.setFloorPosition(vec3.fromValues(0.0, 0.0, 0.0));
+        }
+    } else {
+        if (vrDisplay.capabilities.hasExternalDisplay) {         
+            _jellyFace.setModelTransform(vec3.fromValues(0.0, 0.5, 0.0), _jellyFace._modelRotation, _jellyFace._modelScale);
+            _jellyFace.setCameraTransform(vec3.fromValues(0.0, 0.6, 1.0), _jellyFace._cameraRotation);
+            //_jellyFace.setFloorPosition(vec3.fromValues(0.0, 1.0, 0.0));
+            _jellyFace.setHandRootTransform(vec3.fromValues(0.0, 0.25, 0.25), _jellyFace._modelRotation, vec3.fromValues(0.001, 0.001, 0.001));
+            _jellyFace.resetData();
+        }
+    }
+}
+
+
+function toggleVR() {
+    if( vrDisplay)
+    {
+        if( vrDisplay.isPresenting )
+        {
+
+            onVRExitPresent();
+        }
+        else
+        {
+
+            onVRRequestPresent();
+        }
+
+    }
+}
+

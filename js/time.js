@@ -23,9 +23,9 @@ class Time {
             dt = ( this._currentTime - this._lastFrameTime ) * 0.001; // in seconds
             
             // prevent large animation jump from switching tabs/minimizing window
-            if( dt > 1.0 )
+            if( Math.abs(dt) > 0.5 )
             {
-                dt = 0.0;
+                dt = 0.00;
             }
                 
         }

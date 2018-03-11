@@ -45,6 +45,16 @@
     text-align: center;
 }
 
+#vrContainer {
+    position: absolute;
+    bottom: 0%;
+    right: 1%;
+    text-align: center;
+
+    user-select: none;
+    -moz-user-select: none;
+}
+
 .icon{
     position: relative;
     width: 100%;

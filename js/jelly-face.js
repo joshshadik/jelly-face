@@ -40,6 +40,10 @@ class JellyFace {
         this._vMatrix = [];
         this._mMatrix = [];
 
+        this._floorMatrix = [];
+
+        this._cameraMatrix = [];
+
         this._cameraRotation =  [];
         this._cameraPosition = [];
 
@@ -99,23 +103,7 @@ class JellyFace {
         loadVBOFromURL(meshPath, 24, bufLayout, function(mesh) {
             self._faceMesh = mesh;
 
-            // initialize data into vox texture
-            var initPosVS = Material.createShader(shaders.vs.initPos, gl.VERTEX_SHADER);
-            var initDataMaterial = new Material( initPosVS, self.vColorFS );
-            initDataMaterial.addVertexAttribute("aPos");
-            initDataMaterial.addVertexAttribute("aVertexID");
-            initDataMaterial.setMatrix("uPMatrix", self._pMatrix );
-            initDataMaterial.setMatrix("uVMatrix", self._vMatrix );
-            initDataMaterial.setMatrix("uMMatrix", self._mMatrix );
-            initDataMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
-            
-            gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
-            gl.clearColor(0.0, 0.0, 0.0, 0.0);
-            
-            self.renderDataBuffer( self._posFbo.fbo(), initDataMaterial, self._faceMesh, gl.POINTS );
-            
-            gl.bindFramebuffer( gl.FRAMEBUFFER, null ); 
-            gl.viewport(0, 0, canvas.width, canvas.height);
+            self.resetPositionData();
 
             loadImageFromUrl(imgPath, function() {           
                 readyCallback();
@@ -123,6 +111,39 @@ class JellyFace {
 
 
         });
+    }
+
+    resetPositionData()
+    {
+        var initPosVS = Material.createShader(shaders.vs.initPos, gl.VERTEX_SHADER);
+        var initDataMaterial = new Material( initPosVS, this.vColorFS );
+        initDataMaterial.addVertexAttribute("aPos");
+        initDataMaterial.addVertexAttribute("aVertexID");
+        initDataMaterial.setMatrix("uPMatrix", this._pMatrix );
+        initDataMaterial.setMatrix("uVMatrix", this._vMatrix );
+        initDataMaterial.setMatrix("uMMatrix", this._mMatrix );
+        initDataMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
+        
+        gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
+        gl.clearColor(0.0, 0.0, 0.0, 0.0);
+        
+        this.renderDataBuffer( this._posFbo.fbo(), initDataMaterial, this._faceMesh, gl.POINTS );
+        
+        gl.bindFramebuffer( gl.FRAMEBUFFER, null ); 
+        gl.viewport(0, 0, canvas.width, canvas.height);        
+    }
+
+    resetData()
+    {
+        this.resetPositionData();
+
+        gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
+        gl.clearColor(0.0, 0.0, 0.0, 0.0);
+
+        gl.bindFramebuffer( gl.FRAMEBUFFER, this._velFbo.fbo() );
+        gl.clear( gl.COLOR_BUFFER_BIT );
+
+        Framebuffer.bindDefault();
     }
 
 
@@ -178,32 +199,30 @@ class JellyFace {
         mat4.perspective(this._pMatrix, 45, canvas.width/canvas.height, 0.01, 50.0);
         
         this._cameraRotation = quat.create();
-        this._cameraPosition = vec3.fromValues(0, 0, -1 );
+        this._cameraPosition = vec3.fromValues(0, 0.6, 1.0 );
         this._cameraUp = vec3.fromValues(0.0, 1.0, 0.0 );
 
-        this._modelRotation = quat.fromValues(0.0, 0.0, 0.0, 1.0);
-        this._modelPosition = vec3.fromValues(0.0, -0.1, 0.0);
-        this._modelScale = vec3.fromValues(1.0, 1.0, 1.0);
+        this.setModelTransform(vec3.fromValues(0.0, 0.5, 0.0), quat.fromValues(0.0, 0.0, 0.0, 1.0), vec3.fromValues(1.0, 1.0, 1.0));
+        this.setHandRootTransform(vec3.fromValues(0.0, 0.25, 0.25), this._modelRotation, vec3.fromValues(0.001, 0.001, 0.001));
 
-
-        mat4.fromRotationTranslationScale(this._handsMatrix, this._modelRotation, vec3.fromValues(0.0, -0.35, 0.25), vec3.fromValues(0.001, 0.001, 0.001));
-        
-        
-        mat4.fromRotationTranslation( this._vMatrix, this._cameraRotation, this._cameraPosition );
-        mat4.fromRotationTranslation( this._mMatrix, this._modelRotation, this._modelPosition );
+        this.setFloorPosition(vec3.fromValues(0.0, 0.0, 0.0));
+              
+        mat4.fromRotationTranslation( this._cameraMatrix, this._cameraRotation, this._cameraPosition );
+        mat4.invert(this._vMatrix, this._cameraMatrix);
     
-        this._lightPosition = vec3.fromValues( 0.0, 0.0, -3.0 );
+        this._lightPosition = vec3.fromValues( 0.0, 3.0, 3.0 );
         this._lightRotation = quat.create();
         
-        quat.rotateX(this._lightRotation, this._lightRotation, 0.678);
-        quat.rotateY(this._lightRotation, this._lightRotation, -0.3);
-        quat.rotateX(this._lightRotation, this._lightRotation, -0.3);
-        quat.rotateZ(this._lightRotation, this._lightRotation, -0.1);
+        quat.rotateX(this._lightRotation, this._lightRotation, -0.778);
+        // quat.rotateY(this._lightRotation, this._lightRotation, -0.3);
+        // quat.rotateX(this._lightRotation, this._lightRotation, -0.3);
+        // quat.rotateZ(this._lightRotation, this._lightRotation, -0.1);
         
         mat4.fromRotationTranslation( this._lightView, this._lightRotation, this._lightPosition ); 
+        mat4.invert(this._lightView, this._lightView);
 
-        var orthoSize = 0.9;
-        mat4.ortho( this._lightPerspective, -orthoSize, orthoSize, -orthoSize, orthoSize, 1.0, 5.0 );
+        var orthoSize = 2.0;
+        mat4.ortho( this._lightPerspective, -orthoSize, orthoSize, -orthoSize, orthoSize, 1.0, 10.0 );
         //mat4.perspective(this._lightPerspective, 0.62, 1.0, 0.1, 5.0);
 
         mat4.multiply(this._lightVP, this._lightPerspective, this._lightView);
@@ -370,7 +389,7 @@ class JellyFace {
             this._floorMaterials[i].addVertexAttribute("aPos");
             this._floorMaterials[i].setMatrix("uPMatrix", this._pMatrix );
             this._floorMaterials[i].setMatrix("uVMatrix", this._vMatrix );
-            this._floorMaterials[i].setMatrix("uMMatrix", this._mMatrix );
+            this._floorMaterials[i].setMatrix("uMMatrix", this._floorMatrix );
         }
         
 
@@ -687,12 +706,13 @@ class JellyFace {
     {
         if( this._faceLoaded )
         {
-            mat4.fromRotationTranslation( this._vMatrix, this._cameraRotation, this._cameraPosition);
+            mat4.fromRotationTranslation( this._cameraMatrix, this._cameraRotation, this._cameraPosition);
+            mat4.invert(this._vMatrix, this._cameraMatrix);
             mat4.fromRotationTranslationScale( this._mMatrix, this._modelRotation, this._modelPosition, this._modelScale );
 
 
-            this._faceMaterials[0].setMatrix("uMMatrix", this._mMatrix);
-            this._faceMaterials[0].setMatrix("uVMatrix", this._vMatrix);
+            // this._faceMaterials[0].setMatrix("uMMatrix", this._mMatrix);
+            // this._faceMaterials[0].setMatrix("uVMatrix", this._vMatrix);
 
             // this._voxelMaterials[this._voxelMaterialIndex].setMatrix("uMMatrix", this._mMatrix );  
             // this._voxelMaterials[this._voxelMaterialIndex].setMatrix("uVMatrix", this._vMatrix );
@@ -705,12 +725,12 @@ class JellyFace {
 
             // this._handMaterial.setMatrix("uVMatrix", this._vMatrix);
 
-            var invVP = [];
-            //mat4.multiply(invVP, this._vMatrix, this._mMatrix);
-            mat4.multiply(invVP, this._pMatrix, this._vMatrix); // , invVP);
-            mat4.invert(invVP, invVP);
+            // var invVP = [];
+            // //mat4.multiply(invVP, this._vMatrix, this._mMatrix);
+            // mat4.multiply(invVP, this._pMatrix, this._vMatrix); // , invVP);
+            // mat4.invert(invVP, invVP);
 
-            this._velMaterial.setMatrix("uInvMVPMatrix", invVP);
+            // this._velMaterial.setMatrix("uInvMVPMatrix", invVP);
         }
     }
 
@@ -726,7 +746,7 @@ class JellyFace {
         gl.viewport(0, 0, 512, 512);
         //gl.clear( gl.COLOR_BUFFER_BIT );
     
-        this._copyMaterial.setTexture("uCopyTex", this._shadowFbo.color().native() );
+        this._copyMaterial.setTexture("uCopyTex", this._screenFbo.color().native() );
         this._copyMaterial.apply();   
         this._screenQuadMesh.render();
         this._copyMaterial.unapply();
@@ -735,8 +755,15 @@ class JellyFace {
         //this.blit( this._posFbo.color().native(), null, 512, 512);
     }
 
-    render()
+    render(viewMatrix = null, projMatrix = null,  rect = null)
     {   
+
+        if( viewMatrix )
+        {
+            mat4.multiply(viewMatrix, viewMatrix, this._vMatrix);
+        }
+        this.bindViewProjMatrix(viewMatrix ? viewMatrix : this._vMatrix, projMatrix ? projMatrix : this._pMatrix);
+
         if(this._faceLoaded)
         {
             this.renderParticleData( Time.deltaTime() );
@@ -824,9 +851,15 @@ class JellyFace {
         }
 
 
-
-        Framebuffer.bindDefault();
-        gl.clear( gl.COLOR_BUFFER_BIT );
+        if( rect )
+        {
+            Framebuffer.bindDefaultRect(rect);
+        }
+        else
+        {
+            Framebuffer.bindDefault();
+        }
+    
     
 
         this._composeMaterial.apply();
@@ -838,51 +871,57 @@ class JellyFace {
         //this.debugPosBuffer();
     }
 
-    handleResize()
+    handleResize(width, height)
     {
-        mat4.perspective(this._pMatrix, 45, canvas.width/canvas.height, 0.01, 50.0);
+        mat4.perspective(this._pMatrix, 45, width/height, 0.01, 50.0);
+     
+        // Set the viewport to match
+        gl.viewport(0, 0, width,height);
 
+        this.setupScreenBuffer();
+    }
+
+
+    bindViewProjMatrix(view, proj)
+    {
         for( var i = 0; i < this._faceMaterials.length; ++i )
         {
-            this._faceMaterials[i].setMatrix("uPMatrix", this._pMatrix);
+            this._faceMaterials[i].setMatrix("uVMatrix", view);
+            this._faceMaterials[i].setMatrix("uPMatrix", proj);
         }
-        
-    
-        // for( var i=0; i < this._voxelMaterials.length; i++ )
-        // {
-        //     this._voxelMaterials[i].setMatrix("uPMatrix", this._pMatrix );
-        // }
+        this._velMaterial.setMatrix("uVMatrix", view);
+        this._handMaterial.setMatrix("uVMatrix", view);
 
-        this._velMaterial.setMatrix("uPMatrix", this._pMatrix);
-        this._grabMaterial.setMatrix("uPMatrix", this._pMatrix);
-
-        this._handMaterial.setMatrix("uPMatrix", this._pMatrix);
-
+        this._velMaterial.setMatrix("uPMatrix", proj);
+        this._handMaterial.setMatrix("uPMatrix", proj);
 
         for( var i = 0; i < this._floorMaterials.length; ++i )
         {
-            this._floorMaterials[i].setMatrix("uPMatrix", this._pMatrix);
+            this._floorMaterials[i].setMatrix("uVMatrix", view);
+            this._floorMaterials[i].setMatrix("uPMatrix", proj);
         }
-        
-        // Set the viewport to match
-        gl.viewport(0, 0, canvas.width,canvas.height);
 
-        this.setupScreenBuffer();
+        var invVP = [];
+        //mat4.multiply(invVP, this._vMatrix, this._mMatrix);
+        mat4.multiply(invVP, proj, this._cameraMatrix); // , invVP);
+        mat4.invert(invVP, invVP);
+
+        this._velMaterial.setMatrix("uInvMVPMatrix", invVP);
     }
 
     handleZoom(delta)
     {
         var currentZ = this._cameraPosition[2];
 
-        currentZ += delta * 0.1;
+        currentZ -= delta * 0.1;
 
-        if( currentZ < -3 )
+        if( currentZ > 3 )
         {
-            currentZ = -3;
+            currentZ = 3;
         }
-        else if ( currentZ > -0.5 )
+        else if ( currentZ < 0.5 )
         {
-            currentZ = -0.5;
+            currentZ = 0.5;
         }
 
         this._cameraPosition[2] = currentZ;
@@ -989,6 +1028,40 @@ class JellyFace {
         }
     }
 
+
+    setModelTransform(position, rotation, scale)
+    {
+        this._modelRotation = rotation; //quat.fromValues(0.0, 0.0, 0.0, 1.0);
+        this._modelPosition = position; //vec3.fromValues(0.0, -0.1, 0.0);
+        this._modelScale = scale; //vec3.fromValues(1.0, 1.0, 1.0);
+
+        mat4.fromRotationTranslation( this._mMatrix, this._modelRotation, this._modelPosition );
+    }
+
+    setHandRootTransform(position, rotation, scale, multiplyByCamera = false)
+    {       
+        mat4.fromRotationTranslationScale(this._handsMatrix, rotation, position, scale);
+
+        if( multiplyByCamera )
+        {
+            mat4.multiply(this._handsMatrix, this._cameraMatrix, this._handsMatrix);
+        }
+    }
+
+    setCameraTransform(position, rotation)
+    {
+        this._cameraPosition = position;
+        this._cameraRotation = rotation;
+
+        mat4.fromRotationTranslation(this._cameraMatrix, this._cameraRotation, this._cameraPosition);
+        mat4.invert(this._vMatrix, this._cameraMatrix);
+    }
+
+    setFloorPosition(position)
+    {
+        mat4.fromTranslation(this._floorMatrix, position);
+    }
+
 }
 
 var quadVertices = [
@@ -1005,10 +1078,10 @@ var quadVertexIndices = [
 
 
 var floorVertices = [
-    -10.0, -0.5, -10.0,
-    -10.0, -0.5, 10.0,
-    10.0, -0.5, 10.0,
-    10.0, -0.5, -10.0
+    -10.0, 0.0, -10.0,
+    -10.0, 0.0, 10.0,
+    10.0, 0.0, 10.0,
+    10.0, 0.0, -10.0
 ];
 
 var floorIndices = quadVertexIndices;

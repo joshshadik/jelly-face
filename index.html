@@ -12,7 +12,7 @@
     <script src="https://js.leapmotion.com/leap-0.6.4.min.js"></script>
 
     <script src="thirdparty/gl-matrix-min.js"></script>
-    <!-- <script src="thirdparty/stats.min.js"></script> -->
+    <script src="thirdparty/stats.min.js"></script>
     <script src="thirdparty/ShaderLoader.js"></script>
 
     <!-- <script src="jelly-face.min.js"></script> -->
@@ -52,7 +52,9 @@
                 <a href="https://sketchfab.com/models/27c0788205264c7bac3b734e2733413c">Snoop Dogg</a> by <a href="https://sketchfab.com/tipatat">tipatat</a> is licensed under <a href="http://creativecommons.org/licenses/by/4.0">CC Attribution</a>
             </p>
         </div>
-
+        <div id="vrContainer" hidden>
+            <input class="icon" alt="Enter VR" onclick="toggleVR();" type="image" src="./icons/vr_icon.png" />
+        </div>
         <div id="loading">
             <span id="loadingText">l o a d i n g . . .</span>
         </div>

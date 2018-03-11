@@ -57,11 +57,15 @@ class Framebuffer {
         gl.viewport(0, 0, this._width, this._height);
     }
 
-    static bindDefault()
+    static bindDefaultRect(rect)
     {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.viewport(0, 0, canvas.width, canvas.height);
+        gl.viewport(rect[0], rect[1], rect[2], rect[3]);
     }
 
+    static bindDefault()
+    {
+        this.bindDefaultRect([0, 0, canvas.width, canvas.height]);
+    }
 
 }

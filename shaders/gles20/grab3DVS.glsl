@@ -14,10 +14,6 @@ uniform vec3 uMousePos;
 uniform float uAspect;
 uniform float uRadius;
 
-uniform mat4 uMMatrix;
-uniform mat4 uVMatrix;
-uniform mat4 uPMatrix;
-
 varying vec4 vColor;
 varying vec3 vPos;
 varying vec2 vTexcoord;

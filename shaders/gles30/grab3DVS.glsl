@@ -13,10 +13,6 @@ uniform vec3 uMousePos;
 uniform float uAspect;
 uniform float uRadius;
 
-uniform mat4 uMMatrix;
-uniform mat4 uVMatrix;
-uniform mat4 uPMatrix;
-
 out vec4 vColor;
 
 void main(void) {

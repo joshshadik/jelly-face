@@ -51,7 +51,7 @@ void main(void) {
     vec4 grab1 = texture2D(uGrabTex1, uv.xy);
     
     vec3 stretch = (uGrabPos0 + grab0.xyz) - pos.xyz;
-    vec3 adjOff =  (dPos.xyz - pos.xyz);
+    vec3 adjOff =  (dPos.xyz - pos.xyz) * 1.2;
 
 
     stretch = stretch * grab0.a + (( uGrabPos1 + grab1.xyz) - pos.xyz ) * grab1.a;

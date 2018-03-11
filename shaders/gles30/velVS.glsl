@@ -36,7 +36,7 @@ void main(void) {
     vec3 vel = texture(uVelTex, uv.xy).xyz;
     vel = vel.xyz - vel.xyz * uDeltaTime * 3.0;
 
-    float grab = texture(uGrabTex, uv.xy).x;
+    float grab = texture(uGrabTex, uv.xy).a;
 
     vec4 scrPos = uPMatrix * uVMatrix * vec4(pos, 1.0);
     scrPos.xyz /= scrPos.w;
@@ -50,7 +50,7 @@ void main(void) {
 
     float sqDist = length(off);
 
-    vec3 scrVel = (off * 1.0 / max(sqDist, 0.1))  * uDeltaTime;
+    vec3 scrVel = (off / max(sqDist, 0.1)) * uDeltaTime;
 
     // float pull = sqDist * 4.0;
     // pull = pull * pull * 50.0;
