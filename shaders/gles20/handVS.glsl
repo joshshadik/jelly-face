@@ -14,6 +14,7 @@ varying vec4 vPos;
 void main(void) {
     vPos = uMMatrix * vec4(aPos, 1.0);
     vColor = vec4(1.0, 0.0, 0.0, 1.0);
-    gl_Position = uPMatrix * uVMatrix * vPos;
-    gl_PointSize = 10.0;
+    vec4 pos = uPMatrix * uVMatrix * vPos;
+    gl_Position = pos;
+    gl_PointSize = 10.0 / pos.w;
 }

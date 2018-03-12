@@ -96,7 +96,9 @@ class Hand {
             // gl.drawArrays(gl.LINES, 0, 5 * 4);
 
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._iBuffer);
-            gl.drawElements(gl.LINES, 40, gl.UNSIGNED_INT, 0);    
+            gl.drawElements(gl.LINES, 40, gl.UNSIGNED_INT, 0);   
+            
+            gl.drawArrays(gl.POINTS, 0, 5 * 4);
         }
     }
 

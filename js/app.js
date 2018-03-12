@@ -574,7 +574,7 @@ function onVRPresentChange () {
 
         _jellyFace.resetData();
     } else {    
-        _jellyFace.setModelTransform(vec3.fromValues(0.0, 0.5, 0.0), _jellyFace._modelRotation, _jellyFace._modelScale);
+        _jellyFace.setModelTransform(vec3.fromValues(0.0, 0.5, 0.0), quat.fromValues(0.0, 0.0, 0.0, 1.0), _jellyFace._modelScale);
         _jellyFace.setCameraTransform(vec3.fromValues(0.0, 0.6, 1.0), _jellyFace._cameraRotation);
         _jellyFace.setFloorPosition(vec3.fromValues(0.0, 0.0, 0.0));
         _jellyFace.setHandRootTransform(vec3.fromValues(0.0, 0.25, 0.25), _jellyFace._modelRotation, vec3.fromValues(0.001, 0.001, 0.001));
