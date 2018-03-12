@@ -83,6 +83,7 @@ class JellyFace {
 
         this._handMaterial = null;
         this._hands = [new Hand(), new Hand()];
+        this._hands[0].flipHand();
 
         this._handsMatrix = [];
 
@@ -663,12 +664,7 @@ class JellyFace {
 
         for( var hh = 0; hh < this._hands.length; ++hh )
         {
-            if( this._hands[hh] != null )
-            {
-                this._handMaterial.apply();
-                this._hands[hh].render();
-                this._handMaterial.unapply();
-            }
+            this._hands[hh].render(this._handMaterial);
         }
 
 
@@ -769,9 +765,7 @@ class JellyFace {
         {
             if( this._hands[hh] != null )
             {
-                this._handMaterial.apply();
-                this._hands[hh].render();
-                this._handMaterial.unapply();
+                this._hands[hh].render(this._handMaterial);
             }
         }
 
@@ -804,12 +798,7 @@ class JellyFace {
 
             for( var hh = 0; hh < this._hands.length; ++hh )
             {
-                if( this._hands[hh] != null )
-                {
-                    this._handMaterial.apply();
-                    this._hands[hh].render();
-                    this._handMaterial.unapply();
-                }
+                this._hands[hh].render(this._handMaterial);
             }
         
             if( this._faceLoaded )
@@ -989,12 +978,15 @@ class JellyFace {
     }
 
 
-    updateHand(index, hand, startPinch) {
-        this._hands[index].setHand(hand);
+    updateLeapHand(index, hand, startPinch) {
+        this._hands[index].setLeapHand(hand);
 
         if( hand != null  && this._grab3DMaterial != null && this._faceLoaded)
         {
             var tipPos = hand.indexFinger.tipPosition;
+
+            this._hands[index].setMatrix(this._handsMatrix);
+            this._hands[index].setHidden(false);
 
             var tempMtx = [];
 
@@ -1012,6 +1004,24 @@ class JellyFace {
                 this._grab3DMaterial.setVec3("uGrabPos", pos);
                 this.startToolUse(index, true);
             }
+        }
+        else
+        {
+            this._hands[index].setHidden(true);
+        }
+    }
+
+    updateVRHand(index, mtx, pos, startPinch, holdPinch) {
+        this._hands[index].setMatrix(mtx);
+        this._hands[index].setClosed(holdPinch);
+        this._hands[index].setHidden(false);
+
+        this._vel3DMaterial.setVec3("uGrabPos" + index, pos);
+
+        if( startPinch )
+        {
+            this._grab3DMaterial.setVec3("uGrabPos", pos);
+            this.startToolUse(index, true);
         }
     }
 

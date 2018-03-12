@@ -16,5 +16,5 @@ void main(void) {
     vColor = vec4(1.0, 0.0, 0.0, 1.0);
     vec4 pos = uPMatrix * uVMatrix * vPos;
     gl_Position = pos;
-    gl_PointSize = 10.0 / pos.w;
+    gl_PointSize = min(10.0 / pos.w, 10.0);
 }

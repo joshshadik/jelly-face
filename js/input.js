@@ -298,7 +298,7 @@ function updateHand(index, frame)
         pinchDown[index] = false;
     }
 
-    _jellyFace.updateHand(index, hand, startPinch);
+    _jellyFace.updateLeapHand(index, hand, startPinch);
 
 }
 
@@ -313,14 +313,14 @@ function leapAnimate(frame)
         }
         else
         {
-            _jellyFace.updateHand(1, null, false);
+            _jellyFace.updateLeapHand(1, null, false);
             _jellyFace.endToolUse(1);
         }
     }
     else
     {
-        _jellyFace.updateHand(0, null, false);
-        _jellyFace.updateHand(1, null, false);
+        _jellyFace.updateLeapHand(0, null, false);
+        _jellyFace.updateLeapHand(1, null, false);
 
         for( var i = 0; i < 2; ++i )
         {
@@ -330,7 +330,5 @@ function leapAnimate(frame)
                 pinchDown[i] = false;
             }
         }
-        // _jellyFace.endToolUse(0);
-        // _jellyFace.endToolUse(1);
     }
 }

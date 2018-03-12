@@ -4,6 +4,9 @@ var gl;
 var vrDisplay = null;
 var frameData = null;
 
+var vrGamepads = [];
+var gamepadPressed = [];
+
 var _jellyFace = null;
 var _time = null;
 
@@ -13,7 +16,7 @@ var _supportsWebGL2 = false;
 
 var shaders = null;
 
-var stats = new Stats();
+var stats = null; //new Stats();
 
 var isLoading = true;
 var loadingElement = null;
@@ -48,8 +51,11 @@ var modelIndex = 0;
 // sets everything up
 //
 function start() {  
-    stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
-    document.body.appendChild( stats.dom );
+    if( stats )
+    {
+        stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
+        document.body.appendChild( stats.dom );
+    }
 
     loadingElement = document.getElementById("loadingText");
 
@@ -161,7 +167,8 @@ function render(viewMatrix = null, projMatrix = null, rect = null)
 //
 function tick( currentTime )
 {
-    stats.begin();
+    if( stats )
+        stats.begin();
 
     _time.update(currentTime);
 
@@ -171,6 +178,65 @@ function tick( currentTime )
 
         vrDisplay.getFrameData(frameData);
 
+
+        vrGamepads = [];
+        var gamepads = navigator.getGamepads();
+        console.log("gampads: "+ gamepads.length );
+        for (var i = 0; i < gamepads.length; ++i) {
+          var gamepad = gamepads[i];
+          if (gamepad) {
+            if (gamepad.pose || gamepad.displayId)
+              vrGamepads.push(gamepad);
+          }
+        }
+
+        if( !_jellyFace._hands[0].isLeapControlled() )
+        {
+            
+            for( var g = 0; g < vrGamepads.length; ++g )
+            {
+                var mtx = [];
+
+                if( vrGamepads[g].pose.hasPosition && vrGamepads[g].pose.position )
+                {
+                    var pp = vrGamepads[g].pose.position;
+                    var pos = vec3.fromValues(pp[0], pp[1], pp[2]);
+                    
+                    mat4.fromRotationTranslationScale(mtx, vrGamepads[g].pose.orientation, pos, vec3.fromValues(0.001, 0.001, 0.001 ));
+
+                    var pressed = false;
+
+                    if( gamepadPressed.length <= g )
+                    {
+                        gamepadPressed.push(false);
+                    }
+
+                    if( !gamepadPressed[g] && vrGamepads[g].buttons[1].pressed )
+                    {
+                        pressed = true;
+                        gamepadPressed[g] = true;
+                    }
+                    else if ( gamepadPressed[g]  && !vrGamepads[g].buttons[1].pressed)
+                    {
+                        gamepadPressed[g] = false;
+                        _jellyFace.endToolUse(g);
+                    }
+
+                    var index = g;
+
+                    if( vrGamepads[g].hand == "left" )
+                    {
+                        index = 0;
+                    }
+                    else
+                    {
+                        index = 1;
+                    }
+
+                    _jellyFace.updateVRHand(index, mtx, pos, pressed, vrGamepads[g].buttons[1].pressed);
+                }
+            }
+        }
 
         if( frameData.pose )
         {
@@ -252,7 +318,8 @@ function tick( currentTime )
         vrDisplay.submitFrame();
     }
 
-    stats.end();
+    if(stats)
+        stats.end();
 }
 
 
@@ -376,46 +443,6 @@ function initWebGL(preserveBuffer = false) {
 }
 
 
-function initUI()
-{    
-    document.getElementById('fileItem').addEventListener('change', handleLoadImage, false);
-}
-
-function tutorialOff()
-{
-    document.getElementById("overlayTutorial").style.display = "none";
-    _started = true;
-}
-
-function handleLoadImage( evt ) {
-   var files = evt.target.files;
-   var f = files[0];
-   
-   var reader = new FileReader();
-
-    // Only process image files.
-    if (f.type.match('image.*')) {
-        reader.onload = (function(theFile) {
-            return function(e) {
-                loadVoxelTexture( e.target.result );
-            };
-        })(f);
-
-        reader.readAsDataURL(f);
-    }
-    else if( f.name.endsWith('.vox')) { // or magica voxel files ( not perfectly atm)
-        reader.onload = (function(theFile) {
-            return function(e) {
-                var cubeTexture = gl.createTexture();
-
-                _jellyFace.handleTextureLoaded(importMagicaVoxel( e.target.result, "" ), cubeTexture );
-            };
-        })(f);
-
-        reader.readAsArrayBuffer(f);
-    }
-}
-
 function loadImageFromUrl(url, callback) {
     var req = new XMLHttpRequest();
 
@@ -428,7 +455,7 @@ function loadImageFromUrl(url, callback) {
                 var reader = new FileReader();
                 reader.onload = (function(theFile) {
                     return function(e) {
-                        loadVoxelTexture( e.target.result );
+                        loadTexture( e.target.result );
                         callback();
                     };
                 })(req.response);
@@ -443,21 +470,13 @@ function loadImageFromUrl(url, callback) {
     req.send();
 }
 
-function loadVoxelTexture(dataSource) {
-    var cubeTexture = gl.createTexture();
-    var cubeImage = new Image();
-    cubeImage.onload = function() { _jellyFace.handleTextureLoaded(cubeImage, cubeTexture); }
-    cubeImage.src = dataSource;
+function loadTexture(dataSource) {
+    var faceTexture = gl.createTexture();
+    var faceImage = new Image();
+    faceImage.onload = function() { _jellyFace.handleTextureLoaded(faceImage, faceTexture); }
+    faceImage.src = dataSource;
 }
 
-
-function saveVoxelTexture() {
-    var pixels = _jellyFace.getVoxTextureCPU();
-    var bmpEncoder = new BMPEnc(pixels, JellyFace.RT_TEX_SIZE, JellyFace.RT_TEX_SIZE, true);
-    var blob = new Blob([bmpEncoder.encode()], {type: "image/bmp"});
-
-    saveAs(blob, "voxsculpt.bmp");
-}
 
 
 function resize() 
