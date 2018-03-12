@@ -181,7 +181,7 @@ function tick( currentTime )
 
         vrGamepads = [];
         var gamepads = navigator.getGamepads();
-        console.log("gampads: "+ gamepads.length );
+
         for (var i = 0; i < gamepads.length; ++i) {
           var gamepad = gamepads[i];
           if (gamepad) {
