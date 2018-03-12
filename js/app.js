@@ -206,6 +206,17 @@ function tick( currentTime )
 
                     var pressed = false;
 
+                    var index = g;
+
+                    if( vrGamepads[g].hand == "left" )
+                    {
+                        index = 0;
+                    }
+                    else
+                    {
+                        index = 1;
+                    }
+
                     if( gamepadPressed.length <= g )
                     {
                         gamepadPressed.push(false);
@@ -219,20 +230,22 @@ function tick( currentTime )
                     else if ( gamepadPressed[g]  && !vrGamepads[g].buttons[1].pressed)
                     {
                         gamepadPressed[g] = false;
-                        _jellyFace.endToolUse(g);
+                        _jellyFace.endToolUse(index);
                     }
 
-                    var index = g;
 
-                    if( vrGamepads[g].hand == "left" )
+                    if(  vrDisplay.stageParameters )
                     {
-                        index = 0;
-                    }
-                    else
-                    {
-                        index = 1;
-                    }
+                        mat4.multiply(mtx, vrDisplay.stageParameters.sittingToStandingTransform, mtx );
+                    
+                        var tempMtx = [];
 
+                        mat4.fromTranslation(tempMtx, pos);
+                        mat4.multiply(tempMtx, vrDisplay.stageParameters.sittingToStandingTransform, tempMtx);
+        
+            
+                        mat4.getTranslation(pos, tempMtx);
+                    }
                     _jellyFace.updateVRHand(index, mtx, pos, pressed, vrGamepads[g].buttons[1].pressed);
                 }
             }
