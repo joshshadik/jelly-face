@@ -16,7 +16,7 @@ out vec4 color;
 
 void main(void) {
     vec4 col = texture(uColTex, vTexcoord.st);
-    vec4 pos = texture(uPosTex, vTexcoord.st);
+    //vec4 pos = texture(uPosTex, vTexcoord.st);
 
     vec4 shadow = texture(uShadowTex, vTexcoord.st);
     col.rgb = col.rgb * 0.6 + col.rgb * shadow.rgb * 0.4;

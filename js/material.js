@@ -8,33 +8,34 @@ var FaceCullModeEnum = {
 };
 
 
-var vertexAttributeToggler = new Object();
-vertexAttributeToggler.currAttributes = 0x0; // assume no more than 32 attributes
-vertexAttributeToggler.enable = function(attributes) {
-    var x = this.currAttributes ^ attributes;
+// var vertexAttributeToggler = new Object();
+// vertexAttributeToggler.currAttributes = 0x0; // assume no more than 32 attributes
+// vertexAttributeToggler.enable = function(attributes) {
+//     var x = this.currAttributes ^ attributes;
 
-    for( var v = 0; v < 32; v += 1 )
-    {
-        var curr = ((1 << v) & this.currAttributes);
-        if( curr != ((1 << v) & attributes))
-        {
-            if( curr != 0 )
-            {
-                gl.disableVertexAttribArray(v);
-            }
-            else
-            {
-                gl.enableVertexAttribArray(v);
-            }
-        }
-    }
+//     for( var v = 0; v < 32; v += 1 )
+//     {
+//         var curr = ((1 << v) & this.currAttributes);
+//         if( curr != ((1 << v) & attributes))
+//         {
+//             if( curr != 0 )
+//             {
+//                 gl.disableVertexAttribArray(v);
+//             }
+//             else
+//             {
+//                 gl.enableVertexAttribArray(v);
+//             }
+//         }
+//     }
 
-    this.currAttributes = attributes;
-};
+//     this.currAttributes = attributes;
+// };
 
 class Material {
     constructor(vertexShader, fragmentShader) 
     {     
+        this.shaderProgram = null;
         if( vertexShader != null && fragmentShader != null )
         {
             this.shaderProgram = gl.createProgram();
@@ -73,17 +74,17 @@ class Material {
     
     setMatrix( attName, value ) 
     {
-        this.matrixAttributes[attName] = [gl.getUniformLocation(this.shaderProgram, attName), value];;
+        this.matrixAttributes[attName] = [gl.getUniformLocation(this.shaderProgram, attName), value];
     }
 
     setVec2( attName, value )
     {
-        this.vec2Attributes[attName] = [gl.getUniformLocation(this.shaderProgram, attName), value];;
+        this.vec2Attributes[attName] = [gl.getUniformLocation(this.shaderProgram, attName), value];
     }
     
     setVec3( attName, value )
     {
-        this.vec3Attributes[attName] = [gl.getUniformLocation(this.shaderProgram, attName), value];;
+        this.vec3Attributes[attName] = [gl.getUniformLocation(this.shaderProgram, attName), value];
     }
     
     setShader(shaderProgram )

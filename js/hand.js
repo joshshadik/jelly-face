@@ -35,11 +35,11 @@ class Hand {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._iBuffer);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(this._indices), gl.STATIC_DRAW);
 
-        for( var vv = 0; vv < this._handOpened.length; vv += 3)
-        {
-            this._handOpened[vv+2] = this._handOpened[vv+2] + 70;
-            this._handClosed[vv+2] = this._handClosed[vv+2] + 70;
-        }
+        // for( var vv = 0; vv < this._handOpened.length; vv += 3)
+        // {
+        //     this._handOpened[vv+2] = this._handOpened[vv+2] + 70;
+        //     this._handClosed[vv+2] = this._handClosed[vv+2] + 70;
+        // }
 
         this._hidden = true;
     }

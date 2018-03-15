@@ -23,15 +23,17 @@ function handlePointerMove(event, newX, newY, sculpt, rotate, zoomAmount) {
     var deltaX = newX - lastMouseX;
     var deltaY = newY - lastMouseY;
 
-    if( zoomAmount == null )
+    if( !(vrDisplay && vrDisplay.isPresenting) )
     {
-        zoomAmount = (deltaX + deltaY) * 0.05;
-    }
+        if( zoomAmount == null )
+        {
+            zoomAmount = (deltaX + deltaY) * 0.05;
+        }
 
-
-    if( zoomAmount )
-    {
-        _jellyFace.handleZoom(zoomAmount);
+        if( zoomAmount )
+        {
+            _jellyFace.handleZoom(zoomAmount);
+        }
     }
     
     if( rotate )
@@ -163,7 +165,10 @@ function handleMouseMove(event) {
 
 function handleMouseWheel(event) 
 {
-    _jellyFace.handleZoom( event.wheel );
+    if(!(vrDisplay && vrDisplay.isPresenting ))
+    {
+        _jellyFace.handleZoom( event.wheel );
+    }
 }
 
 function handleRightClick(event) {

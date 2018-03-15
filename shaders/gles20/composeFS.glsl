@@ -12,7 +12,7 @@ uniform float uAspect;
 
 void main(void) {
     vec4 col = texture2D(uColTex, vTexcoord.st);
-    vec4 pos = texture2D(uPosTex, vTexcoord.st);
+    //vec4 pos = texture2D(uPosTex, vTexcoord.st);
 
     vec4 shadow = texture2D(uShadowTex, vTexcoord.st);
     col.rgb = col.rgb * 0.6 + col.rgb * shadow.rgb * 0.4;

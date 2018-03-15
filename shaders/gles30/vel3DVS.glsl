@@ -32,8 +32,8 @@ out vec4 vColor;
 void main(void) {
     gl_PointSize = 1.0;
 
-    float stiffness = 100.0;
-    float damping = 1.0;
+    float stiffness = 50.0;
+    float damping = 2.5;
 
     vec2 uv = (vec2(mod(aVertexID, uImageSize), floor( aVertexID / uImageSize)) + 0.5 ) / uImageSize;
 
@@ -41,13 +41,12 @@ void main(void) {
 
     vec3 pos = texture(uPosTex, uv.xy).xyz;
     vec3 vel = texture(uVelTex, uv.xy).xyz;
-    vel = vel.xyz - vel.xyz * uDeltaTime * 3.0;
 
     vec4 grab0 = texture(uGrabTex0, uv.xy);
     vec4 grab1 = texture(uGrabTex1, uv.xy);
     
     vec3 stretch = (uGrabPos0 + grab0.xyz) - pos.xyz;
-    vec3 adjOff =  (dPos.xyz - pos.xyz) * 1.2;
+    vec3 adjOff =  (dPos.xyz - pos.xyz);
 
 
     stretch = stretch * grab0.a + (( uGrabPos1 + grab1.xyz) - pos.xyz ) * grab1.a;
@@ -55,25 +54,8 @@ void main(void) {
     stretch = stretch + adjOff * min(1.0 - grab0.a, 1.0 - grab1.a);
     vec3 acceleration = stretch * stiffness - vel * damping;
 
-
-    // stretch = dPos.xyz - pos.xyz;
-    // acceleration += stretch * stiffness - vel * damping;
-
-
     vel += acceleration * uDeltaTime;
 
-    // float sqDist = length(off);
-
-    // vec3 pullVel = (off * 1.0 / max(sqDist, 0.1))  * uDeltaTime;
-
-    // pullVel = pullVel * (1.0 - grab) - ( off * 5.0) * grab;
-
-
-    // vec4 wVel = vec4(pullVel.xyz, 0.0);
-    // vel += wVel.xyz;
-
-
-    //vel.xyz += adjOff;
     
     vColor = vec4(vel, 1.0);
 

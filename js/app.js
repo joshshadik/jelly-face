@@ -1,12 +1,6 @@
 var canvas;
 var gl;
 
-var vrDisplay = null;
-var frameData = null;
-
-var vrGamepads = [];
-var gamepadPressed = [];
-
 var _jellyFace = null;
 var _time = null;
 
@@ -42,7 +36,18 @@ var credits = [
     '<a href="https://sketchfab.com/models/ab61515e456549fd9d6e4caff91060ae">Marilyn Monroe</a> by <a href="https://sketchfab.com/tipatat">tipatat</a> is licensed under <a href="http://creativecommons.org/licenses/by/4.0">CC Attribution</a>'
 ];
 
+var sketchfabURLS = [
+    'https://sketchfab.com/models/27c0788205264c7bac3b734e2733413c',
+    'https://sketchfab.com/models/687ee1b6d7234ac4a4797f09435d8ab3',
+    'https://sketchfab.com/models/093b1edcac344c8bb272e1967aeac30c',
+    'https://sketchfab.com/models/5a4534d44b2c4244be9cd0a75fa81866',
+    'https://sketchfab.com/models/92589e6f710f409dbc1e9edbe26eb1bd',
+    'https://sketchfab.com/models/ab61515e456549fd9d6e4caff91060ae'
+];
+
 var modelIndex = 0;
+
+
 
 //
 // start
@@ -65,29 +70,7 @@ function start() {
     canvas.height = window.innerHeight;
     
     if (navigator.getVRDisplays) {
-        frameData = new VRFrameData();
-        navigator.getVRDisplays().then(function (displays) {
-            if (displays.length > 0) {
-                vrDisplay = displays[displays.length - 1];
-                vrDisplay.depthNear = 0.1;
-                vrDisplay.depthFar = 1024.0;
-                initWebGL(vrDisplay.capabilities.hasExternalDisplay);
-                if (vrDisplay.stageParameters &&
-                    vrDisplay.stageParameters.sizeX > 0 &&
-                    vrDisplay.stageParameters.sizeZ > 0) {
-                }
-                window.addEventListener('vrdisplaypresentchange', onVRPresentChange, false);
-                window.addEventListener('vrdisplayactivate', onVRRequestPresent, false);
-                window.addEventListener('vrdisplaydeactivate', onVRExitPresent, false);
-                document.getElementById("vrContainer").hidden = false;
-            } else {
-                initWebGL(false);
-            }
-        }, 
-        function () {
-        });
-    } else if (navigator.getVRDevices) {
-        initWebGL(false);
+        initVR();
     } else {
         initWebGL(false);
     }
@@ -97,16 +80,16 @@ function start() {
 
 function loadFace(index)
 {
+    modelIndex = index;
     isLoading = true;
     loadingElement.style.display = "";
-    vertexAttributeToggler.currAttributes = 0x0;
+    // vertexAttributeToggler.currAttributes = 0x0;
     _jellyFace.loadFace("./assets/" + models[index], ready);
     document.getElementById("attributions").innerHTML = credits[index];
 
     if( vrDisplay && vrDisplay.isPresenting )
     {
-        _jellyFace.setModelTransform(vec3.fromValues(0.0, 1.5, 0.0), _jellyFace._modelRotation, _jellyFace._modelScale);
-        _jellyFace.setCameraTransform(vec3.fromValues(0.0, 0.0, 1.0), _jellyFace._cameraRotation);      
+        //setupVRScene();
     }
 }
 
@@ -176,93 +159,7 @@ function tick( currentTime )
     if( vrDisplay && vrDisplay.isPresenting ) {
         animLoop = vrDisplay.requestAnimationFrame(tick);
 
-        vrDisplay.getFrameData(frameData);
-
-
-        vrGamepads = [];
-        var gamepads = navigator.getGamepads();
-
-        for (var i = 0; i < gamepads.length; ++i) {
-          var gamepad = gamepads[i];
-          if (gamepad) {
-            if (gamepad.pose || gamepad.displayId)
-              vrGamepads.push(gamepad);
-          }
-        }
-
-        if( !_jellyFace._hands[0].isLeapControlled() )
-        {
-            
-            for( var g = 0; g < vrGamepads.length; ++g )
-            {
-                var mtx = [];
-
-                if( vrGamepads[g].pose.hasPosition && vrGamepads[g].pose.position )
-                {
-                    var pp = vrGamepads[g].pose.position;
-                    var pos = vec3.fromValues(pp[0], pp[1], pp[2]);
-                    
-                    mat4.fromRotationTranslationScale(mtx, vrGamepads[g].pose.orientation, pos, vec3.fromValues(0.001, 0.001, 0.001 ));
-
-                    var pressed = false;
-
-                    var index = g;
-
-                    if( vrGamepads[g].hand == "left" )
-                    {
-                        index = 0;
-                    }
-                    else
-                    {
-                        index = 1;
-                    }
-
-                    if( gamepadPressed.length <= g )
-                    {
-                        gamepadPressed.push(false);
-                    }
-
-                    if( !gamepadPressed[g] && vrGamepads[g].buttons[1].pressed )
-                    {
-                        pressed = true;
-                        gamepadPressed[g] = true;
-                    }
-                    else if ( gamepadPressed[g]  && !vrGamepads[g].buttons[1].pressed)
-                    {
-                        gamepadPressed[g] = false;
-                        _jellyFace.endToolUse(index);
-                    }
-
-
-                    if(  vrDisplay.stageParameters )
-                    {
-                        mat4.multiply(mtx, vrDisplay.stageParameters.sittingToStandingTransform, mtx );
-                    
-                        var tempMtx = [];
-
-                        mat4.fromTranslation(tempMtx, pos);
-                        mat4.multiply(tempMtx, vrDisplay.stageParameters.sittingToStandingTransform, tempMtx);
-        
-            
-                        mat4.getTranslation(pos, tempMtx);
-                    }
-                    _jellyFace.updateVRHand(index, mtx, pos, pressed, vrGamepads[g].buttons[1].pressed);
-                }
-            }
-        }
-
-        if( frameData.pose )
-        {
-            if( frameData.pose.position && frameData.pose.orientation )
-            {
-                var rotation = [];
-                quat.fromEuler(rotation, 90.0, 180.0, 0.0);
-
-                quat.multiply(rotation, frameData.pose.orientation, rotation);
-                var handMtx  = [];
-                _jellyFace.setHandRootTransform(frameData.pose.position, rotation, vec3.fromValues(0.001, 0.001, 0.001 ), true );
-            }
-        }
+        updateVR();
     }
     else
     {
@@ -280,24 +177,7 @@ function tick( currentTime )
         
         if( vrDisplay && vrDisplay.isPresenting ) 
         {
-            var lvm = [];
-            var rvm = [];
-
-            if(  vrDisplay.stageParameters )
-            {
-                var invStand = [];
-                mat4.invert(invStand, vrDisplay.stageParameters.sittingToStandingTransform );
-                mat4.multiply(lvm, frameData.leftViewMatrix, invStand);
-                mat4.multiply(rvm, frameData.rightViewMatrix, invStand);
-            }
-            else
-            {
-                lvm = frameData.leftViewMatrix;
-                rvm = frameData.rightViewMatrix;
-            }
-
-            render(lvm, frameData.leftProjectionMatrix, [0, 0, canvas.width * 0.5, canvas.height]);
-            render(rvm, frameData.rightProjectionMatrix, [canvas.width * 0.5, 0, canvas.width * 0.5, canvas.height]);
+            renderVR();
         }
         else
         {
@@ -420,6 +300,8 @@ function initWebGL(preserveBuffer = false) {
         shaders.load('vel3DVS',         'vel3D',        'vertex');
         shaders.load('handVS',          'hand',         'vertex');
         shaders.load('handFS',          'hand',         'fragment');
+        shaders.load('texturedQuadVS',  'texturedQuad', 'vertex');
+        shaders.load('texturedQuadFS',  'texturedQuad', 'fragment');
 
         if( _supportsWebGL2 )
         {
@@ -445,7 +327,10 @@ function initWebGL(preserveBuffer = false) {
 
         shaders.shaderSetLoaded = function() {
             loadFace(modelIndex);
+            initGLVR();
         }
+
+        
 
         // start the core loop cycle
         animLoop = requestAnimationFrame(tick);  
@@ -468,8 +353,7 @@ function loadImageFromUrl(url, callback) {
                 var reader = new FileReader();
                 reader.onload = (function(theFile) {
                     return function(e) {
-                        loadTexture( e.target.result );
-                        callback();
+                        loadTexture( e.target.result, callback );
                     };
                 })(req.response);
         
@@ -483,13 +367,25 @@ function loadImageFromUrl(url, callback) {
     req.send();
 }
 
-function loadTexture(dataSource) {
-    var faceTexture = gl.createTexture();
-    var faceImage = new Image();
-    faceImage.onload = function() { _jellyFace.handleTextureLoaded(faceImage, faceTexture); }
-    faceImage.src = dataSource;
+function loadTexture(dataSource, callback) {
+    var texture = gl.createTexture();
+    var image = new Image();
+    image.onload = function() { 
+        gl.bindTexture(gl.TEXTURE_2D, texture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        callback(texture); 
+    }
+    image.src = dataSource;
 }
 
+function redirectToSketcfabModel() {
+    window.location.href = sketchfabURLS[modelIndex];
+}
 
 
 function resize() 
@@ -516,119 +412,4 @@ function resize()
 }
 
 
-function onVRRequestPresent () {
-    vrDisplay.requestPresent([{ source: canvas }]).then(function () {
-    }, function (err) {
-        var errMsg = "requestPresent failed.";
-        if (err && err.message) {
-            errMsg += "<br/>" + err.message
-        }
-        console.error(errMsg);
-    });
-}
-
-function onVRExitPresent () {
-    if (!vrDisplay.isPresenting)
-        return;
-    vrDisplay.exitPresent().then(function () {
-    }, function () {
-        console.error("exitPresent failed.");
-    });
-}
-function onVRPresentChange () {
-    resize();
-    if (vrDisplay.isPresenting) {
-        var pos = null;
-        var rot = null;
-
-        window.cancelAnimationFrame(animLoop);
-        animLoop = vrDisplay.requestAnimationFrame(tick);
-
-        if( vrDisplay.capabilities.hasPosition )
-        {
-            vrDisplay.getFrameData(frameData);
-            var p = frameData.pose.position;
-            if( p )
-            {
-                pos = vec3.fromValues(p[0], p[1], p[2]);
-
-                if( vrDisplay.capabilities.hasOrientation )
-                {
-                    var forward = [0];
-                    vec3.transformQuat(forward, vec3.fromValues(0.0, 0.0, -1.0), frameData.pose.orientation);
-                    forward[1] = 0.0;
-                    vec3.normalize(forward, forward);
-
-                    rot = [];
-                    quat.rotationTo(rot, vec3.fromValues(0.0, 0.0, -1.0), forward);
-
-                    vec3.scale(forward, forward, 0.5);
-                    vec3.add(forward, forward, vec3.fromValues(0.0, -0.1, 0.0));
-                    vec3.add(pos, pos, forward);                   
-                }
-
-                if(  vrDisplay.stageParameters )
-                {
-                    var invStand = [];
-                    mat4.invert(invStand, vrDisplay.stageParameters.sittingToStandingTransform );
-
-                    var mMtx = [];
-                    mat4.fromTranslation(mMtx, pos);
-
-                    mat4.multiply(mMtx, vrDisplay.stageParameters.sittingToStandingTransform, mMtx);
-
-                    mat4.getTranslation(pos, mMtx);
-                }
-            }
-        }
-
-        if( !pos )
-        {
-            pos = vec3.fromValues(0.0, 1.4, -0.5);
-        }
-
-        if( !rot )
-        {
-            rot = _jellyFace._modelRotation;
-        }
-
-        _jellyFace.setModelTransform(pos, rot, _jellyFace._modelScale);
-        _jellyFace.setCameraTransform(vec3.fromValues(0.0, 0.0, 0.0), _jellyFace._cameraRotation);
-
-        if(!vrDisplay.stageParameters )
-        {
-            _jellyFace.setFloorPosition(vec3.fromValues(pos[0], -1.0, pos[2]));
-        }
-        else
-        {
-            _jellyFace.setFloorPosition(vec3.fromValues(pos[0], 0.0, pos[2]));
-        }
-
-        _jellyFace.resetData();
-    } else {    
-        _jellyFace.setModelTransform(vec3.fromValues(0.0, 0.5, 0.0), quat.fromValues(0.0, 0.0, 0.0, 1.0), _jellyFace._modelScale);
-        _jellyFace.setCameraTransform(vec3.fromValues(0.0, 0.6, 1.0), _jellyFace._cameraRotation);
-        _jellyFace.setFloorPosition(vec3.fromValues(0.0, 0.0, 0.0));
-        _jellyFace.setHandRootTransform(vec3.fromValues(0.0, 0.25, 0.25), _jellyFace._modelRotation, vec3.fromValues(0.001, 0.001, 0.001));
-        _jellyFace.resetData();
-    }
-}
-
-
-function toggleVR() {
-    if( vrDisplay)
-    {
-        if( vrDisplay.isPresenting )
-        {
-
-            onVRExitPresent();
-        }
-        else
-        {
-
-            onVRRequestPresent();
-        }
-
-    }
-}
 

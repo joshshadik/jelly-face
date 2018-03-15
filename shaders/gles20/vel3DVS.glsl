@@ -35,9 +35,8 @@ void main(void) {
     gl_PointSize = 1.0;
     vTexcoord = aTexcoord;
     vPos = aPos;
-
-    float stiffness = 100.0;
-    float damping = 1.0;
+    float stiffness = 50.0;
+    float damping = 2.5;
 
     vec2 uv = (vec2(mod(aVertexID, uImageSize), floor( aVertexID / uImageSize)) + 0.5 ) / uImageSize;
 
@@ -45,13 +44,12 @@ void main(void) {
 
     vec3 pos = texture2D(uPosTex, uv.xy).xyz;
     vec3 vel = texture2D(uVelTex, uv.xy).xyz;
-    vel = vel.xyz - vel.xyz * uDeltaTime * 3.0;
 
     vec4 grab0 = texture2D(uGrabTex0, uv.xy);
     vec4 grab1 = texture2D(uGrabTex1, uv.xy);
     
     vec3 stretch = (uGrabPos0 + grab0.xyz) - pos.xyz;
-    vec3 adjOff =  (dPos.xyz - pos.xyz) * 1.2;
+    vec3 adjOff =  (dPos.xyz - pos.xyz);
 
 
     stretch = stretch * grab0.a + (( uGrabPos1 + grab1.xyz) - pos.xyz ) * grab1.a;

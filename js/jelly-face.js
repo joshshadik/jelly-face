@@ -9,7 +9,8 @@ class JellyFace {
 
     constructor()
     {
-        
+        this._initialized = false;
+
         this._cubeBatch = null; // batch of cubed voxels
  
         this._voxelMaterials = [];    // materials to render the voxels with
@@ -87,6 +88,11 @@ class JellyFace {
 
         this._handsMatrix = [];
 
+        this._vrButtons = [];
+
+        this._vrUIMatrix = mat4.create();
+
+
         this._using3DTool = false;
 
     }
@@ -99,14 +105,19 @@ class JellyFace {
         var self = this;
         var meshPath = path + ".vbo";
         var imgPath = path + ".jpg";
-        this.init();
+        if( !this._initialized )
+        {
+            this.init();
+        }
+        
 
         loadVBOFromURL(meshPath, 24, bufLayout, function(mesh) {
             self._faceMesh = mesh;
 
             self.resetPositionData();
 
-            loadImageFromUrl(imgPath, function() {           
+            loadImageFromUrl(imgPath, function(tex) {   
+                self.handleTextureLoaded(tex);        
                 readyCallback();
             });
 
@@ -321,7 +332,7 @@ class JellyFace {
         this._vel3DMaterial.addVertexAttribute("aPos");
         this._vel3DMaterial.addVertexAttribute("aVertexID");
 
-        this._vel3DMaterial.setFloat("uRadius", 0.05 );
+        this._vel3DMaterial.setFloat("uRadius", 0.18 );
         this._vel3DMaterial.setFloat("uAspect", canvas.height / canvas.width);   
         this._vel3DMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
 
@@ -343,7 +354,7 @@ class JellyFace {
         this._grab3DMaterial.setTexture("uPosTex", this._posFbo.color().native());
         this._grab3DMaterial.addVertexAttribute("aVertexID");
 
-        this._grab3DMaterial.setFloat("uRadius", 0.25 );
+        this._grab3DMaterial.setFloat("uRadius", 0.18 );
         this._grab3DMaterial.setFloat("uAspect", canvas.height / canvas.width);   
         this._grab3DMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
         
@@ -582,15 +593,7 @@ class JellyFace {
         Framebuffer.bindDefault();
     }
 
-    handleTextureLoaded(image, texture) {
-
-        gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-        gl.bindTexture(gl.TEXTURE_2D, null);
+    handleTextureLoaded( texture) {
     
         this.blit(texture, this._faceColorBuffer.fbo(), this._faceColorSize, this._faceColorSize );
 
@@ -683,6 +686,7 @@ class JellyFace {
         this.initTransforms();  
         this.initParticleData();      
         this.initMaterials();
+        this._initialized = true;
     }
 
     update()
@@ -738,6 +742,22 @@ class JellyFace {
         //this.blit( this._posFbo.color().native(), null, 512, 512);
     }
 
+
+    renderVRButtons(viewMatrix, projMatrix )
+    {
+        if( vrDisplay && vrDisplay.isPresenting)
+        {
+            for( var bb = 0; bb < this._vrButtons.length; ++bb )
+            {
+                if( this._vrButtons[bb] != null )
+                {
+                    this._vrButtons[bb].render(viewMatrix ? viewMatrix : this._vMatrix, projMatrix ? projMatrix : this._pMatrix);
+                }
+            }
+        }
+
+    }
+
     render(viewMatrix = null, projMatrix = null,  rect = null)
     {   
 
@@ -761,12 +781,19 @@ class JellyFace {
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         
-        for( var hh = 0; hh < this._hands.length; ++hh )
+
+
+        if( _supportsWebGL2 )
         {
-            if( this._hands[hh] != null )
+            for( var hh = 0; hh < this._hands.length; ++hh )
             {
-                this._hands[hh].render(this._handMaterial);
+                if( this._hands[hh] != null )
+                {
+                    this._hands[hh].render(this._handMaterial);
+                }
             }
+
+            this.renderVRButtons(viewMatrix, projMatrix);
         }
 
         if( this._faceLoaded )
@@ -789,6 +816,7 @@ class JellyFace {
 
 
 
+
         if(!_supportsWebGL2 )
         {
             this._screenColorFbo.bind();
@@ -801,6 +829,8 @@ class JellyFace {
                 this._hands[hh].render(this._handMaterial);
             }
         
+            this.renderVRButtons(viewMatrix, projMatrix);
+
             if( this._faceLoaded )
             {
                 this._faceMaterials[1].apply();
@@ -977,6 +1007,19 @@ class JellyFace {
         return pixels;
     }
 
+    checkVRButtonClick(pos, pressed)
+    {
+        for( var bb = 0; bb < this._vrButtons.length; ++bb )
+        {
+            if(this._vrButtons[bb].hover(pos))
+            {
+                if( pressed )
+                {
+                    this._vrButtons[bb].click();
+                }
+            }
+        }
+    }
 
     updateLeapHand(index, hand, startPinch) {
         this._hands[index].setLeapHand(hand);
@@ -997,6 +1040,11 @@ class JellyFace {
 
             mat4.getTranslation(pos, tempMtx);
 
+            if( vrDisplay && vrDisplay.isPresenting )
+            {
+                this.checkVRButtonClick(pos, startPinch);
+            }
+
             this._vel3DMaterial.setVec3("uGrabPos" + index, pos);
 
             if( startPinch )
@@ -1012,6 +1060,12 @@ class JellyFace {
     }
 
     updateVRHand(index, mtx, pos, startPinch, holdPinch) {
+
+        mat4.multiply(mtx, this._cameraMatrix, mtx);
+        vec3.transformMat4(pos, pos, this._cameraMatrix);
+
+        this.checkVRButtonClick(pos, startPinch);
+
         this._hands[index].setMatrix(mtx);
         this._hands[index].setClosed(holdPinch);
         this._hands[index].setHidden(false);
@@ -1033,6 +1087,16 @@ class JellyFace {
         this._modelScale = scale; //vec3.fromValues(1.0, 1.0, 1.0);
 
         mat4.fromRotationTranslation( this._mMatrix, this._modelRotation, this._modelPosition );
+
+        var rot = quat.create();
+        quat.rotateY(rot, rot, -1.3);
+        mat4.fromRotationTranslation(this._vrUIMatrix, rot, vec3.fromValues(0.6, 0.0, 0.6));
+        mat4.multiply(this._vrUIMatrix, this._mMatrix, this._vrUIMatrix);
+
+        for( var bb = 0; bb < this._vrButtons.length; ++bb )
+        {
+            this._vrButtons[bb].updateWorld(this._vrUIMatrix);
+        }
 
 
         var forward = [];
@@ -1073,6 +1137,8 @@ class JellyFace {
 
         mat4.fromRotationTranslation(this._cameraMatrix, this._cameraRotation, this._cameraPosition);
         mat4.invert(this._vMatrix, this._cameraMatrix);
+
+
     }
 
     setFloorPosition(position)
@@ -1080,13 +1146,18 @@ class JellyFace {
         mat4.fromTranslation(this._floorMatrix, position);
     }
 
+    setVRButtons(vrButtons)
+    {
+        this._vrButtons = vrButtons;
+    }
+
 }
 
 var quadVertices = [
-  -1.0, -1.0,  -1.0,
-    1.0, -1.0,  -1.0,
-    1.0,  1.0,  -1.0,
-  -1.0,  1.0,  -1.0,
+  -1.0, -1.0,  0.0,
+    1.0, -1.0,  0.0,
+    1.0,  1.0,  0.0,
+  -1.0,  1.0,  0.0,
 ];
 
 var quadVertexIndices = [
