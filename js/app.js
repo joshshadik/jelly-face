@@ -384,7 +384,8 @@ function loadTexture(dataSource, callback) {
 }
 
 function redirectToSketcfabModel() {
-    window.location.href = sketchfabURLS[modelIndex];
+    // commented out because it kicks user out of vr
+    // window.location.href = sketchfabURLS[modelIndex];
 }
 
 

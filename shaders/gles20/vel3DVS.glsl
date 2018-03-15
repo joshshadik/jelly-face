@@ -5,6 +5,7 @@ attribute vec3 aPos;
 attribute vec2 aTexcoord;
 attribute float aVertexID;
 
+uniform sampler2D uDesiredPosTex;
 uniform sampler2D uPosTex;
 uniform sampler2D uVelTex;
 
@@ -33,14 +34,16 @@ varying vec3 vPos;
 
 void main(void) {
     gl_PointSize = 1.0;
-    vTexcoord = aTexcoord;
     vPos = aPos;
+    vTexcoord = aTexcoord;
+
     float stiffness = 50.0;
     float damping = 2.5;
 
     vec2 uv = (vec2(mod(aVertexID, uImageSize), floor( aVertexID / uImageSize)) + 0.5 ) / uImageSize;
 
-    vec4 dPos = uMMatrix * vec4(aPos.xyz, 1.0); 
+    vec4 dPos = texture2D(uDesiredPosTex, uv.xy); //uMMatrix * vec4(aPos.xyz, 1.0); 
+    //dPos.xyz = texture2D(uDesiredPosTex, uv.xy).rgb; //uMMatrix * vec4(aPos.xyz, 1.0); 
 
     vec3 pos = texture2D(uPosTex, uv.xy).xyz;
     vec3 vel = texture2D(uVelTex, uv.xy).xyz;

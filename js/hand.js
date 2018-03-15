@@ -30,7 +30,7 @@ class Hand {
         mat4.fromScaling(this._mMatrix, vec3.fromValues(0.001, 0.001, 0.001));
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this._vBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, this._handOpened, gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, this._handOpened, gl.DYNAMIC_DRAW);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._iBuffer);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(this._indices), gl.STATIC_DRAW);
@@ -92,6 +92,9 @@ class Hand {
 
             }
 
+            gl.bindBuffer(gl.ARRAY_BUFFER, this._vBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, this._leapVertices, gl.DYNAMIC_DRAW);
+
         }
         else
         {
@@ -107,6 +110,16 @@ class Hand {
 
     setClosed(closed)
     {
+        if( this._closed && !closed )
+        {
+            gl.bindBuffer(gl.ARRAY_BUFFER, this._vBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, this._handOpened, gl.DYNAMIC_DRAW);
+        }
+        else if ( !this._closed && closed )
+        {
+            gl.bindBuffer(gl.ARRAY_BUFFER, this._vBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, this._handClosed, gl.DYNAMIC_DRAW);
+        }
         this._closed = closed;
     }
 
@@ -153,8 +166,7 @@ class Hand {
             }
 
             gl.bindBuffer(gl.ARRAY_BUFFER, this._vBuffer);
-            gl.bufferData(gl.ARRAY_BUFFER, this._leapMotion ? this._leapVertices : (this._closed ? this._handClosed : this._handOpened ), gl.STATIC_DRAW);
-
+            
             gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
 
             // gl.drawArrays(gl.LINES, 0, 5 * 4);

@@ -22,6 +22,8 @@ class JellyFace {
         this._copyFbo = null;   // framebuffer for copying framebuffer contents
         this._posFbo = null;
         this._velFbo = null;
+        
+        this._desiredPosFbo = null;
 
         this._screenFbo = null;
         this._screenColorFbo  = null;
@@ -125,8 +127,9 @@ class JellyFace {
         });
     }
 
-    resetPositionData()
+    resetPositionData( justDesired = false)
     {
+        
         var initPosVS = Material.createShader(shaders.vs.initPos, gl.VERTEX_SHADER);
         var initDataMaterial = new Material( initPosVS, this.vColorFS );
         initDataMaterial.addVertexAttribute("aPos");
@@ -139,7 +142,10 @@ class JellyFace {
         gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
         
-        this.renderDataBuffer( this._posFbo.fbo(), initDataMaterial, this._faceMesh, gl.POINTS );
+        this.renderDataBuffer( justDesired ? this._desiredPosFbo.fbo() : this._posFbo.fbo(), initDataMaterial, this._faceMesh, gl.POINTS );
+
+        if( !justDesired )
+            this.copyPosToDesired();
         
         gl.bindFramebuffer( gl.FRAMEBUFFER, null ); 
         gl.viewport(0, 0, canvas.width, canvas.height);        
@@ -245,6 +251,11 @@ class JellyFace {
             JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE()
         );
 
+        this._desiredPosFbo = new Framebuffer(
+            [new Texture(JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE(), internalFormat, gl.RGBA, texelData)], null,
+            JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE()
+        );
+
         this._velFbo = new Framebuffer(
             [new Texture(JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE(), internalFormat, gl.RGBA, texelData)], null,
             JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE()
@@ -325,11 +336,13 @@ class JellyFace {
         this._velMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
 
         this._vel3DMaterial = new Material(vel3DVS, this.vColorFS);
+        this._vel3DMaterial.setTexture("uDesiredPosTex", this._desiredPosFbo.color().native());
         this._vel3DMaterial.setTexture("uPosTex", this._posFbo.color().native());
         this._vel3DMaterial.setTexture("uVelTex", this._velFbo.color().native());
         this._vel3DMaterial.setTexture("uGrabTex0", this._grabBuffers[0].color().native());
         this._vel3DMaterial.setTexture("uGrabTex1", this._grabBuffers[1].color().native());
-        this._vel3DMaterial.addVertexAttribute("aPos");
+        if(!_supportsWebGL2 )
+            this._vel3DMaterial.addVertexAttribute("aPos");
         this._vel3DMaterial.addVertexAttribute("aVertexID");
 
         this._vel3DMaterial.setFloat("uRadius", 0.18 );
@@ -643,7 +656,9 @@ class JellyFace {
         this._velMaterial.setFloat("uDeltaTime", deltaTime );
         this._vel3DMaterial.setFloat("uDeltaTime", deltaTime );
 
-        this.renderDataBuffer( this._velFbo.fbo(), this._using3DTool ? this._vel3DMaterial : this._velMaterial, this._faceMesh, gl.POINTS );
+        var use3D = this._using3DTool || (vrDisplay && vrDisplay.isPresenting);
+
+        this.renderDataBuffer( this._velFbo.fbo(), use3D ? this._vel3DMaterial : this._velMaterial, this._faceMesh, gl.POINTS );
         this.renderDataBuffer( this._posFbo.fbo(), this._posMaterial, this._screenQuadMesh );
         
         Framebuffer.bindDefault();
@@ -1005,6 +1020,11 @@ class JellyFace {
         Framebuffer.bindDefault();
 
         return pixels;
+    }
+
+    copyPosToDesired()
+    {
+        this.blit(this._posFbo.color().native(), this._desiredPosFbo.fbo(), JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
     }
 
     checkVRButtonClick(pos, pressed)

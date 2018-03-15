@@ -2,7 +2,8 @@ var vrDisplay = null;
 var frameData = null;
 
 var vrGamepads = [];
-var gamepadPressed = [];
+var gPullPressed = [];
+var gLockPressed = [];
 
 var controllerOffset =[[], []];
 var grabPointOffset = [];
@@ -167,20 +168,32 @@ function updateVR()
                     index = 1;
                 }
 
-                if( gamepadPressed.length <= g )
+                if( gPullPressed.length <= g )
                 {
-                    gamepadPressed.push(false);
+                    gPullPressed.push(false);
+                    gLockPressed.push(false);
                 }
 
-                if( !gamepadPressed[g] && vrGamepads[g].buttons[1].pressed )
+
+                if( !gPullPressed[g] && vrGamepads[g].buttons[1].pressed )
                 {
                     pressed = true;
-                    gamepadPressed[g] = true;
+                    gPullPressed[g] = true;
                 }
-                else if ( gamepadPressed[g]  && !vrGamepads[g].buttons[1].pressed)
+                else if ( gPullPressed[g]  && !vrGamepads[g].buttons[1].pressed)
                 {
-                    gamepadPressed[g] = false;
+                    gPullPressed[g] = false;
                     _jellyFace.endToolUse(index);
+                }
+
+                if(!gLockPressed[g] && vrGamepads[g].buttons[0].pressed)
+                {
+                    gLockPressed[g] = true;
+                    _jellyFace.copyPosToDesired();
+                }
+                else if( gLockPressed && !vrGamepads[g].buttons[0].pressed )
+                {
+                    gLockPressed[g] = false;
                 }
 
 

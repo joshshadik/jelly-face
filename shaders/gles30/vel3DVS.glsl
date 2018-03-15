@@ -2,9 +2,10 @@
 precision highp float;
 precision highp sampler2D;
 
-layout( location = 0) in vec3 aPos;
+//layout( location = 0) in vec3 aPos;
 layout( location = 2) in float aVertexID;
 
+uniform sampler2D uDesiredPosTex;
 uniform sampler2D uPosTex;
 uniform sampler2D uVelTex;
 
@@ -37,7 +38,7 @@ void main(void) {
 
     vec2 uv = (vec2(mod(aVertexID, uImageSize), floor( aVertexID / uImageSize)) + 0.5 ) / uImageSize;
 
-    vec4 dPos = uMMatrix * vec4(aPos.xyz, 1.0); 
+    vec4 dPos = texture(uDesiredPosTex, uv.xy); //uMMatrix * vec4(aPos.xyz, 1.0); 
 
     vec3 pos = texture(uPosTex, uv.xy).xyz;
     vec3 vel = texture(uVelTex, uv.xy).xyz;

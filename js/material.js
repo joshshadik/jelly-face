@@ -103,15 +103,11 @@ class Material {
         }
         
 
-        //console.log(attValue);
-
         this.vAttribBits = 0;
         for( var attName in this.vertexAttributes )
         {
             this.vAttribBits |= 1 << this.vertexAttributes[attName];
         }
-
-        //console.log(this.vAttribBits);
 
         return attValue;
     }

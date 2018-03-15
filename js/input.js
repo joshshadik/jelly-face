@@ -60,7 +60,7 @@ function handlePointerMove(event, newX, newY, sculpt, rotate, zoomAmount) {
 
 function handlePointerStart(event, sculpt, rotate, zoom)
 {    
-    if( sculpt )
+    if( sculpt && !(vrDisplay && vrDisplay.isPresenting))
     {
         var nX = ( (lastMouseX / window.innerWidth) ) * 2.0 - 1.0;
         var nY = 1.0 - ( lastMouseY / ( window.innerHeight ) ) * 2.0;
