@@ -4,6 +4,7 @@ var frameData = null;
 var vrGamepads = [];
 var gPullPressed = [];
 var gLockPressed = [];
+var gResetPressed = [];
 
 var controllerOffset =[[], []];
 var grabPointOffset = [];
@@ -11,6 +12,8 @@ var grabPointOffset = [];
 var quadMesh = null;
 
 var faceButtonMaterials = [];
+
+var gamepadType = null;
 
 function initVR()
 {
@@ -36,20 +39,7 @@ function initVR()
     function () {
     });
 
-    var rot = quat.create();
-    quat.rotateX(rot, rot, -0.3);
-    quat.rotateZ(rot, rot, 0.778);
 
-    mat4.fromRotationTranslation(controllerOffset[0], rot, vec3.fromValues(-35.0, 10.0, 110));
-
-
-    rot = quat.create();
-    quat.rotateX(rot, rot, -0.3);
-    quat.rotateZ(rot, rot, -0.778);
-
-    mat4.fromRotationTranslation(controllerOffset[1], rot, vec3.fromValues(35.0, 10.0, 110));
-
-    grabPointOffset = vec3.fromValues(0.0, -0.02, 0.055);
 
 }
 
@@ -69,7 +59,7 @@ function initGLVR()
         faceButtonMaterials.push( 
             new VRButton(
                 vec3.fromValues(-0.15, 0.1, 0.0), rot, scale, 
-                quadMesh, tex, new Material(vs, fs), [0, 0, 0.25, 0.5],
+                quadMesh, tex, new Material(vs, fs), [0, 0, 0.25, 0.25],
                 function() { loadFace(0); }, 0.05
         ));
 
@@ -77,7 +67,7 @@ function initGLVR()
         faceButtonMaterials.push( 
             new VRButton(
                 vec3.fromValues(0.0, 0.1, 0.0), rot, scale, 
-                quadMesh, tex, new Material(vs, fs), [0.25, 0, 0.25, 0.5],
+                quadMesh, tex, new Material(vs, fs), [0.25, 0, 0.25, 0.25],
                 function() { loadFace(1); }, 0.05
         ));
 
@@ -85,7 +75,7 @@ function initGLVR()
         faceButtonMaterials.push( 
             new VRButton(
                 vec3.fromValues(0.15, 0.1, 0.0), rot, scale, 
-                quadMesh, tex, new Material(vs, fs), [0.5, 0, 0.25, 0.5],
+                quadMesh, tex, new Material(vs, fs), [0.5, 0, 0.25, 0.25],
                 function() { loadFace(2); }, 0.05
         ));
 
@@ -93,7 +83,7 @@ function initGLVR()
         faceButtonMaterials.push( 
             new VRButton(
                 vec3.fromValues(-0.15, -0.05, 0.0), rot, scale, 
-                quadMesh, tex, new Material(vs, fs), [0.75, 0, 0.25, 0.5],
+                quadMesh, tex, new Material(vs, fs), [0.75, 0, 0.25, 0.25],
                 function() { loadFace(3); }, 0.05
         ));
 
@@ -101,7 +91,7 @@ function initGLVR()
         faceButtonMaterials.push( 
             new VRButton(
                 vec3.fromValues(0.0, -0.05, 0.0), rot, scale, 
-                quadMesh, tex, new Material(vs, fs), [0.0, 0.5, 0.25, 0.5],
+                quadMesh, tex, new Material(vs, fs), [0.0, 0.25, 0.25, 0.25],
                 function() { loadFace(4); }, 0.05
         ));
 
@@ -109,16 +99,28 @@ function initGLVR()
         faceButtonMaterials.push( 
             new VRButton(
                 vec3.fromValues(0.15, -0.05, 0.0), rot, scale, 
-                quadMesh, tex, new Material(vs, fs), [0.25, 0.5, 0.25, 0.5],
+                quadMesh, tex, new Material(vs, fs), [0.25, 0.25, 0.25, 0.25],
                 function() { loadFace(5); }, 0.05
         ));
 
         mtx = [];
         faceButtonMaterials.push(
             new VRButton(
-                vec3.fromValues(0.0, -0.2, 0.0), rot, vec3.fromValues(0.1, 0.05, 0.5), 
-                quadMesh, tex, new Material(vs, fs), [0.5, 0.5, 0.5, 0.5],
-                function() { redirectToSketcfabModel(); }, 0.1
+                vec3.fromValues(0.0, -0.2, 0.0), rot, vec3.fromValues(0.1, 0.05, 0.05), 
+                quadMesh, tex, new Material(vs, fs), [0.5, 0.25, 0.5, 0.25],
+                null, 0.0 // function() { redirectToSketcfabModel(); }
+        ));
+
+        mtx = [];
+
+        rot = [];
+        quat.fromEuler(rot, 0.0, 130.0, 0.0);
+
+        faceButtonMaterials.push(
+            new VRButton(
+                vec3.fromValues(-0.5, 0.0, 1.25), rot, vec3.fromValues(0.3, 0.15, 0.05), 
+                quadMesh, tex, new Material(vs, fs), [0.0, 0.5, 1.0, 0.5],
+                null, 0.0 // function() { redirectToSketcfabModel(); }
         ));
 
 
@@ -138,6 +140,59 @@ function updateVR()
       if (gamepad) {
         if (gamepad.pose || gamepad.displayId)
           vrGamepads.push(gamepad);
+
+        if( !gamepadType )
+        {
+            var id = gamepad.id;
+            if( id.startsWith("Spatial Controller (Spatial Interaction Source)"))
+            {
+                var rot = quat.create();
+                quat.rotateX(rot, rot, -0.3);
+                quat.rotateZ(rot, rot, 0.778);
+            
+                mat4.fromRotationTranslation(controllerOffset[0], rot, vec3.fromValues(-35.0, 10.0, 30));
+            
+                rot = quat.create();
+                quat.rotateX(rot, rot, -0.3);
+                quat.rotateZ(rot, rot, -0.778);
+            
+                mat4.fromRotationTranslation(controllerOffset[1], rot, vec3.fromValues(35.0, 10.0, 30));
+            
+                grabPointOffset = vec3.fromValues(0.0, 0.0, 0.0);
+            }
+            else if( id.startsWith("OpenVR Gamepad"))
+            {
+                var rot = quat.create();
+                quat.rotateX(rot, rot, -0.3);
+                quat.rotateZ(rot, rot, 0.778);
+            
+                mat4.fromRotationTranslation(controllerOffset[0], rot, vec3.fromValues(-35.0, 10.0, 110));
+            
+                rot = quat.create();
+                quat.rotateX(rot, rot, -0.3);
+                quat.rotateZ(rot, rot, -0.778);
+            
+                mat4.fromRotationTranslation(controllerOffset[1], rot, vec3.fromValues(35.0, 10.0, 110));
+            
+                grabPointOffset = vec3.fromValues(0.0, -0.02, 0.055);
+            }
+            else // going in blind here. only have tested on Windows MR & OpenVR
+            {
+                var rot = quat.create();
+                quat.rotateX(rot, rot, -0.3);
+                quat.rotateZ(rot, rot, 0.778);
+            
+                mat4.fromRotationTranslation(controllerOffset[0], rot, vec3.fromValues(-35.0, 10.0, 30));
+            
+                rot = quat.create();
+                quat.rotateX(rot, rot, -0.3);
+                quat.rotateZ(rot, rot, -0.778);
+            
+                mat4.fromRotationTranslation(controllerOffset[1], rot, vec3.fromValues(35.0, 10.0, 30));
+            
+                grabPointOffset = vec3.fromValues(0.0, 0.0, 0.0);
+            }
+        }
       }
     }
 
@@ -174,26 +229,43 @@ function updateVR()
                     gLockPressed.push(false);
                 }
 
+                // "OpenVR Gamepad"
 
-                if( !gPullPressed[g] && vrGamepads[g].buttons[1].pressed )
+
+                var pullDown = vrGamepads[g].buttons[1].pressed;
+                var lockDown = (vrGamepads[g].buttons[3].pressed || vrGamepads[g].buttons[2].pressed);
+                var resetDown = vrGamepads[g].buttons[0].pressed || (vrGamepads[g].buttons.length > 4 &&  vrGamepads[g].buttons[4].pressed);
+
+                if( !gPullPressed[g] && pullDown )
                 {
                     pressed = true;
                     gPullPressed[g] = true;
                 }
-                else if ( gPullPressed[g]  && !vrGamepads[g].buttons[1].pressed)
+                else if ( gPullPressed[g]  && !pullDown)
                 {
                     gPullPressed[g] = false;
                     _jellyFace.endToolUse(index);
                 }
 
-                if(!gLockPressed[g] && vrGamepads[g].buttons[0].pressed)
+                if(!gLockPressed[g] && lockDown )
                 {
                     gLockPressed[g] = true;
                     _jellyFace.copyPosToDesired();
                 }
-                else if( gLockPressed && !vrGamepads[g].buttons[0].pressed )
+                else if( gLockPressed && !lockDown )
                 {
                     gLockPressed[g] = false;
+                }
+
+                if( !gResetPressed[g] && resetDown )
+                {
+                    setupVRScene();
+                    _jellyFace.resetPositionData(true);
+                    gResetPressed[g] = true;
+                }
+                else if( gResetPressed[g] && !resetDown)
+                {
+                    gResetPressed[g] = false;
                 }
 
 
@@ -279,6 +351,8 @@ function onVRExitPresent () {
 function setupVRScene()
 {
 
+    var pos = null;
+
     if( vrDisplay.capabilities.hasPosition )
     {
         vrDisplay.getFrameData(frameData);
@@ -297,7 +371,7 @@ function setupVRScene()
                 rot = [];
                 quat.rotationTo(rot, vec3.fromValues(0.0, 0.0, -1.0), forward);
 
-                vec3.scale(forward, forward, 0.5);
+                vec3.scale(forward, forward, 0.65);
                 vec3.add(forward, forward, vec3.fromValues(0.0, -0.1, 0.0));
                 vec3.add(pos, pos, forward);             
             }
@@ -320,7 +394,7 @@ function setupVRScene()
 
     if( !pos )
     {
-        pos = vec3.fromValues(0.0, 1.4, -0.5);
+        pos = vec3.fromValues(0.0, 1.4, -0.65);
     }
 
     if( !rot )
@@ -349,7 +423,7 @@ function setupVRScene()
 
     _jellyFace.setFloorPosition(floorPos);
 
-    _jellyFace.resetData();
+    
 }
 
 function onVRPresentChange () {
@@ -362,6 +436,8 @@ function onVRPresentChange () {
         animLoop = vrDisplay.requestAnimationFrame(tick);
 
         setupVRScene();
+
+        _jellyFace.resetData();
 
     } else {    
         _jellyFace.setModelTransform(vec3.fromValues(0.0, 0.5, 0.0), quat.fromValues(0.0, 0.0, 0.0, 1.0), _jellyFace._modelScale);

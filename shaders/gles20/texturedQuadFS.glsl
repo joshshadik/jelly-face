@@ -19,7 +19,6 @@ void main(void) {
     hover *= uHover;
 
     color = color * (1.0 - hover) + vec4(0.0, 1.0, 1.0, 1.0) * hover;
-    color.a = 1.0;
     
     gl_FragColor = color;
 

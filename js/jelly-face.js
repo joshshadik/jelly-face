@@ -748,7 +748,7 @@ class JellyFace {
         gl.viewport(0, 0, 512, 512);
         //gl.clear( gl.COLOR_BUFFER_BIT );
     
-        this._copyMaterial.setTexture("uCopyTex", this._screenFbo.color().native() );
+        this._copyMaterial.setTexture("uCopyTex", this._screenFbo.color(0).native() );
         this._copyMaterial.apply();   
         this._screenQuadMesh.render();
         this._copyMaterial.unapply();
@@ -887,9 +887,7 @@ class JellyFace {
         this._screenQuadMesh.render();
         this._composeMaterial.unapply();
 
-        
-
-        //this.debugPosBuffer();
+        // this.debugPosBuffer();
     }
 
     handleResize(width, height)

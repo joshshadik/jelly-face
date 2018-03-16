@@ -329,9 +329,7 @@ function initWebGL(preserveBuffer = false) {
             loadFace(modelIndex);
             initGLVR();
         }
-
         
-
         // start the core loop cycle
         animLoop = requestAnimationFrame(tick);  
 

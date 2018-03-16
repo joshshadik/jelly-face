@@ -17,6 +17,8 @@ class VRButton {
       
         this._material.setTexture("uColorTex", this._texture);
 
+        this._material.addVertexAttribute("aPos");
+
         this._onClick = onClick;
         this._radius = radius;
         this._sqRadius = radius*radius;
@@ -33,7 +35,7 @@ class VRButton {
 
     hover(position)
     {
-        if( this._hoveredFrame )
+        if( this._hoveredFrame || !this._onClick)
         {
             return false;
         }
@@ -58,7 +60,10 @@ class VRButton {
 
     click()
     {
-        this._onClick();
+        if( this._onClick )
+        {
+            this._onClick();
+        }
     }
 
     updateWorld(parentMatrix)

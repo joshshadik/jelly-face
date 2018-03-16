@@ -38,6 +38,11 @@ float calcShadowFactor( vec2 uv )
 {
     float factor = 0.0;
     vec4 pos = texture(uPosTex, uv.st);   
+    if( pos.a <= 0.5 )
+    {
+        return 0.0;
+    }
+
     vec4 lightPos = calcLightPos(pos);
 
     factor += calcShadow(lightPos.xyz);   
