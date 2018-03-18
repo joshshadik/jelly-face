@@ -94,8 +94,10 @@ class JellyFace {
 
         this._vrUIMatrix = mat4.create();
 
-
         this._using3DTool = false;
+
+        this._stretchSound = new StretchSound();
+        this._startStretchPos = [];
 
     }
 
@@ -734,6 +736,8 @@ class JellyFace {
 
             // this._velMaterial.setMatrix("uInvMVPMatrix", invVP);
         }
+
+        this._stretchSound.update(Time.deltaTime());
     }
 
     postUpdate()
@@ -971,6 +975,8 @@ class JellyFace {
         Framebuffer.bindDefault();
 
         this._using3DTool = grab3D;
+
+        this._stretchSound.start();
     }
 
     endToolUse(index = 0)
@@ -984,6 +990,13 @@ class JellyFace {
             gl.clear( gl.COLOR_BUFFER_BIT );
 
             Framebuffer.bindDefault();
+        }
+
+        if( index == 0 )
+        {
+            this._stretchSound.stretch(0.0);
+
+            this._stretchSound.end();
         }
     }
 
@@ -1069,7 +1082,14 @@ class JellyFace {
             {
                 this._grab3DMaterial.setVec3("uGrabPos", pos);
                 this.startToolUse(index, true);
+                vec3.copy(this._startStretchPos, pos);
             }
+            else if( this._startStretchPos.length > 0 && index == 0 )
+            {
+                var dist = vec3.distance(pos, this._startStretchPos);
+                this._stretchSound.stretch(dist);
+            }
+
         }
         else
         {
