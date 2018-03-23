@@ -1,81 +1,111 @@
+"use strict";
 function StretchSound() {
     this._oscillator = new Tone.Oscillator({
-        "frequency" : 440,
-        "volume" : -10,
-        "type" : "square"
+        "frequency" : 0,
+        "volume" : -Infinity,
+        "type" : "sawtooth4",
     }).toMaster();
+
+
     this._frequency = 0.0;
     this._velocity = 0.0;
-    this._distance = 0.0;
+    this._distance = -1.0;
     this._isPlaying = false;
 
     this._desiredFactor = 0.0;
     this._currentFactor = 0.0;
-    this._desiredFrequency = 0.0;
 
-    this._stiffness = 400.0;
-    this._damping = 5.0;
+    this._stiffness = 600.0;
+    this._damping = 10.0;
 
-    this._desiredVolume = 0.0;
-    this._volume = 0.0;
+    this._desiredVolume = -100.0;
+    this._volume = -100.0;
     this._volumeVelocity = 0.0;
+
+    this._oscillator.start();
 }
 
-StretchSound.prototype.start = function() {
-    this._oscillator.start();
-    Tone.Master.volume.rampTo(-5, 0.05);
+StretchSound.prototype.begin = function() {
+    this._desiredVolume = -10.0;
     this._isPlaying = true;
+
 }
 
 StretchSound.prototype.end = function() {
-    Tone.Master.volume.rampTo(-100.0, 5.0);
+    this._velocity = -70.0;
+    this._desiredFactor = this._distance;
+    this._desiredVolume = -50.0;
+    this._volumeVelocity = 0.0;
+}
+
+StretchSound.prototype.stop = function() {
+    this._frequency = 0.0;
+    this._velocity = 0.0;
+    this._desiredFactor  = 0.0;
+    this._desiredVolume = -100.0;
+    this._volume = -100.0;
     this._isPlaying = false;
 }
 
+
 StretchSound.prototype.stretch = function(distance) {
-    var stretch =  ((distance - this._distance) / Time.deltaTime()) * 0.5;
-    //var stretch = distance * 500.0;
+    if( this._distance < 0.0 )
+    {
+        this._distance = distance;
+        return;
+    }
 
-    this._desiredFrequency = stretch;
+    var stretch =  Math.min(Math.abs((distance - this._distance) / Time.deltaTime()), 0.5);
+
     this._distance = distance;
-    this._desiredFactor = distance * 3.0;
-
-    this._desiredVolume = Math.max(-1.0 / distance, -20.0);
+    this._desiredFactor = Math.min( distance, 2.0 ) + stretch * 1.5;
+    this._desiredVolume = -10.0; //Math.max(-1.0 / distance, -20.0);
 };
 
 
 StretchSound.prototype.update = function(dt) {
 
+    if(!this._isPlaying )
+    {
+        return;
+    }
+
+    this._desiredFactor = Math.max( this._desiredFactor - dt, 0.0 );
     var stretch = this._desiredFactor - this._currentFactor;
 
     var accel = stretch * this._stiffness - this._velocity * this._damping;
     this._velocity += accel * dt;
     this._currentFactor += this._velocity * dt;
-    this._frequency = Math.exp(this._currentFactor) * 50.0;
-    this._oscillator.frequency.rampTo( Math.max(this._frequency, 0.0), 0.05);
+    this._frequency = Math.max(Math.min(Math.exp(this._currentFactor) * 20.0, 500.0) , 0.0);
 
+    if(!isFinite(this._frequency ) )
+    {
+        this._frequency = 0.0;
+        this._currentFactor = 0.0;
+    }
 
-    // stretch = this._desiredVolume - this._volume;
+    this._oscillator.frequency.rampTo( this._frequency, 0.01 );
 
-    // if( Math.abs(stretch) > 1 )
-    // {
+    stretch = this._desiredVolume - this._volume;
 
-    // accel = stretch * 50.0 - this._volumeVelocity * 50.0;
-    // this._volumeVelocity += accel * dt;
-    // this._volume += this._volumeVelocity * dt;
+    if( Math.abs(stretch) > 1 )
+    {
+        accel = stretch * 50.0 - this._volumeVelocity * 5;
+        this._volumeVelocity += accel * dt;
+        this._volume += this._volumeVelocity * dt;
 
-    // if( isNaN(this._volume))
-    // {
-    //     this._volume = -50.0;
-    // }
-    // console.log(this._volume);
+        if( isNaN(this._volume))
+        {
+            this._volume = -100.0;
+        }
 
-    // var vol = this._volume;
+        if( !isFinite(this._volume ))
+        {
+            this._volume = -100.0;
+        }
 
-    // // if( vol < -50.0 )
-    // // {
-    // //     vol = -Infinity;
-    // // }
-    // Tone.Master.volume.value = vol;
-    //}
+        this._oscillator.volume.targetRampTo( this._volume, 2.0 );
+    }
+
+    this._desiredVolume = Math.max( this._desiredVolume - dt * 10.0, -100.0 );
 }

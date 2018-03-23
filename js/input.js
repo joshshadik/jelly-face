@@ -1,3 +1,4 @@
+"use strict";
 var leftDown = false;
 var rightDown = false;
 var lastMouseX = null;

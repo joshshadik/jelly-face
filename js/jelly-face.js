@@ -96,9 +96,13 @@ class JellyFace {
 
         this._using3DTool = false;
 
-        this._stretchSound = new StretchSound();
-        this._startStretchPos = [];
+        this._stretchSounds = [new StretchSound(), new StretchSound()];
+        this._startStretchPos = [[], []];
 
+        this._toolInUse = [false, false];
+
+        this._renderWidth = canvas.width;
+        this._renderHeight = canvas.height;
     }
 
 
@@ -148,9 +152,10 @@ class JellyFace {
 
         if( !justDesired )
             this.copyPosToDesired();
+
         
         gl.bindFramebuffer( gl.FRAMEBUFFER, null ); 
-        gl.viewport(0, 0, canvas.width, canvas.height);        
+        gl.viewport(0, 0, this._renderWidth, this._renderHeight);        
     }
 
     resetData()
@@ -216,7 +221,7 @@ class JellyFace {
 
     initTransforms()
     {
-        mat4.perspective(this._pMatrix, 45, canvas.width/canvas.height, 0.01, 50.0);
+        mat4.perspective(this._pMatrix, 45, this._renderWidth/this._renderHeight, 0.01, 50.0);
 
         var orthoSize = 0.8;
         mat4.ortho( this._lightPerspective, -orthoSize, orthoSize, -orthoSize, orthoSize, 1.0, 10.0 );
@@ -334,7 +339,7 @@ class JellyFace {
         this._velMaterial.addVertexAttribute("aVertexID");
 
         this._velMaterial.setFloat("uRadius", 0.25 );
-        this._velMaterial.setFloat("uAspect", canvas.height / canvas.width);   
+        this._velMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);   
         this._velMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
 
         this._vel3DMaterial = new Material(vel3DVS, this.vColorFS);
@@ -348,7 +353,7 @@ class JellyFace {
         this._vel3DMaterial.addVertexAttribute("aVertexID");
 
         this._vel3DMaterial.setFloat("uRadius", 0.18 );
-        this._vel3DMaterial.setFloat("uAspect", canvas.height / canvas.width);   
+        this._vel3DMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);   
         this._vel3DMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
 
         this._posMaterial = new Material(quadVS, posFS);
@@ -362,7 +367,7 @@ class JellyFace {
         this._grabMaterial.addVertexAttribute("aVertexID");
 
         this._grabMaterial.setFloat("uRadius", 0.25 );
-        this._grabMaterial.setFloat("uAspect", canvas.height / canvas.width);   
+        this._grabMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);   
         this._grabMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
 
         this._grab3DMaterial = new Material(grab3DVS, this.vColorFS);
@@ -370,7 +375,7 @@ class JellyFace {
         this._grab3DMaterial.addVertexAttribute("aVertexID");
 
         this._grab3DMaterial.setFloat("uRadius", 0.18 );
-        this._grab3DMaterial.setFloat("uAspect", canvas.height / canvas.width);   
+        this._grab3DMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);   
         this._grab3DMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
         
         // material to copy 1 texture into another
@@ -381,12 +386,12 @@ class JellyFace {
         this._composeMaterial = new Material(quadVS, composeFS);
         this._composeMaterial.setTexture("uShadowTex", this._shadowScreenFbo.color().native());
         this._composeMaterial.addVertexAttribute("aPos");
-        this._composeMaterial.setFloat("uAspect", canvas.height / canvas.width);
+        this._composeMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);
 
         this._shadowScreenMaterial = new Material(quadVS, shadowScreenFS);
         this._shadowScreenMaterial.setTexture("uShadowTex", this._shadowFbo.color().native());
         this._shadowScreenMaterial.addVertexAttribute("aPos");
-        this._shadowScreenMaterial.setFloat("uAspect", canvas.height / canvas.width);
+        this._shadowScreenMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);
 
 
         this._handMaterial = new Material(handVS, handFS);
@@ -482,8 +487,8 @@ class JellyFace {
         var fTexelData = formats["texelData"];
         var fInternalFormat = formats["internalFormat"];
 
-        var width = canvas.width;
-        var height = canvas.height;
+        var width = this._renderWidth;
+        var height = this._renderHeight;
 
         var colorTexs = [new Texture(width, height, fInternalFormat, gl.RGBA, fTexelData)];
 
@@ -535,8 +540,8 @@ class JellyFace {
 
     updateScreenBufferMaterials()
     {
-        var width = canvas.width;
-        var height = canvas.height;
+        var width = this._renderWidth;
+        var height = this._renderHeight;
 
         if( this._composeMaterial )
         {
@@ -737,7 +742,11 @@ class JellyFace {
             // this._velMaterial.setMatrix("uInvMVPMatrix", invVP);
         }
 
-        this._stretchSound.update(Time.deltaTime());
+        for( var ss = 0; ss < this._stretchSounds.length; ++ss )
+        {
+            this._stretchSounds[ss].update(Time.deltaTime());
+        }
+        
     }
 
     postUpdate()
@@ -896,6 +905,9 @@ class JellyFace {
 
     handleResize(width, height)
     {
+        this._renderWidth = width;
+        this._renderHeight = height;
+
         mat4.perspective(this._pMatrix, 45, width/height, 0.01, 50.0);
      
         // Set the viewport to match
@@ -976,7 +988,10 @@ class JellyFace {
 
         this._using3DTool = grab3D;
 
-        this._stretchSound.start();
+        {
+            this._stretchSounds[index].begin();
+            this._toolInUse[index] = true;
+        }
     }
 
     endToolUse(index = 0)
@@ -992,11 +1007,10 @@ class JellyFace {
             Framebuffer.bindDefault();
         }
 
-        if( index == 0 )
-        {
-            this._stretchSound.stretch(0.0);
 
-            this._stretchSound.end();
+        {
+            this._stretchSounds[index].end();
+            this._toolInUse[index] = false;
         }
     }
 
@@ -1010,16 +1024,15 @@ class JellyFace {
     {
         this._velMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, -1.0]);
         this._grabMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, -1.0]);
-    }
 
+        if( this._toolInUse[0] )
+        {
+            this._stretchSounds[0].stretch(Math.sqrt(nX * nX + nY * nY ) );
+        }
+    }
 
     changeBrushSize(brushSize) {
         this._velMaterial.setFloat("uRadius", brushSize);
-    }
-
-
-    setVoxelMaterialIndex(materialIndex) {
-        // this._voxelMaterialIndex = materialIndex;
     }
 
     getVoxTextureCPU() {
@@ -1082,12 +1095,12 @@ class JellyFace {
             {
                 this._grab3DMaterial.setVec3("uGrabPos", pos);
                 this.startToolUse(index, true);
-                vec3.copy(this._startStretchPos, pos);
+                vec3.copy(this._startStretchPos[index], pos);
             }
-            else if( this._startStretchPos.length > 0 && index == 0 )
+            else if( this._toolInUse[index] && this._startStretchPos[index].length > 0 )
             {
-                var dist = vec3.distance(pos, this._startStretchPos);
-                this._stretchSound.stretch(dist);
+                var dist = vec3.distance(pos, this._startStretchPos[index]);
+                this._stretchSounds[index].stretch(dist);
             }
 
         }
@@ -1114,15 +1127,21 @@ class JellyFace {
         {
             this._grab3DMaterial.setVec3("uGrabPos", pos);
             this.startToolUse(index, true);
+            vec3.copy(this._startStretchPos[index], pos);
+        }
+        else if(this._toolInUse[index] && this._startStretchPos[index].length > 0 )
+        {
+            var dist = vec3.distance(pos, this._startStretchPos[index]);
+            this._stretchSounds[index].stretch(dist);
         }
     }
 
 
     setModelTransform(position, rotation, scale)
     {
-        this._modelRotation = rotation; //quat.fromValues(0.0, 0.0, 0.0, 1.0);
-        this._modelPosition = position; //vec3.fromValues(0.0, -0.1, 0.0);
-        this._modelScale = scale; //vec3.fromValues(1.0, 1.0, 1.0);
+        this._modelRotation = rotation;
+        this._modelPosition = position;
+        this._modelScale = scale;
 
         mat4.fromRotationTranslation( this._mMatrix, this._modelRotation, this._modelPosition );
 
@@ -1187,6 +1206,25 @@ class JellyFace {
     setVRButtons(vrButtons)
     {
         this._vrButtons = vrButtons;
+    }
+
+    stopSounds()
+    {
+        for( var ss = 0; ss < this._stretchSounds.length; ++ss )
+        {
+            this._stretchSounds[ss].stop();
+        }
+    }
+
+    resetJiggleSound( distance )
+    {
+        this._stretchSounds[0].begin();
+        this._stretchSounds[0]._currentFactor = 1.5;
+        this._stretchSounds[0]._currentVolume = -20.0;
+        this._stretchSounds[0]._volumeVelocity = 500.0;
+        this._stretchSounds[0]._oscillator.volume.value = -10.0;
+        this._stretchSounds[0].stretch( distance );
+        this._stretchSounds[0].end();
     }
 
 }

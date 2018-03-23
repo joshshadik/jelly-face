@@ -35,12 +35,6 @@ class Hand {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._iBuffer);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(this._indices), gl.STATIC_DRAW);
 
-        // for( var vv = 0; vv < this._handOpened.length; vv += 3)
-        // {
-        //     this._handOpened[vv+2] = this._handOpened[vv+2] + 70;
-        //     this._handClosed[vv+2] = this._handClosed[vv+2] + 70;
-        // }
-
         this._hidden = true;
     }
 
@@ -51,6 +45,9 @@ class Hand {
             this._handOpened[vv] = -this._handOpened[vv];
             this._handClosed[vv] = -this._handClosed[vv];
         }
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, this._vBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, this._handOpened, gl.DYNAMIC_DRAW);
     }
 
     setMatrix(mtx)
@@ -123,21 +120,6 @@ class Hand {
         this._closed = closed;
     }
 
-    // saveHand()
-    // {
-    //     var txt = "";
-    //     var pp = this._hand.palmPosition;
-    //     for( var vv = 0; vv < this._leapVertices.length/3; ++vv )
-    //     {
-            
-    //         txt = txt + (this._leapVertices[vv*3] - pp[0]).toFixed(2) + ", " + ( this._leapVertices[vv*3 + 1] - pp[1] ).toFixed(2) + ", " + (this._leapVertices[vv*3 + 2] - pp[2]).toFixed(2) + ", ";
-    //     }
-
-    //     var blob = new Blob([txt], {type: "text/plain"});
-
-    //     saveAs(blob, "hand.txt");
-    // }
-
     getPinchPos()
     {
         if( this._hand != null )
@@ -168,8 +150,6 @@ class Hand {
             gl.bindBuffer(gl.ARRAY_BUFFER, this._vBuffer);
             
             gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-
-            // gl.drawArrays(gl.LINES, 0, 5 * 4);
 
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this._iBuffer);
             gl.drawElements(gl.LINES, 40, gl.UNSIGNED_INT, 0);   

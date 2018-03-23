@@ -1,3 +1,5 @@
+"use strict";
+
 var vrDisplay = null;
 var frameData = null;
 
@@ -60,50 +62,44 @@ function initGLVR()
             new VRButton(
                 vec3.fromValues(-0.15, 0.1, 0.0), rot, scale, 
                 quadMesh, tex, new Material(vs, fs), [0, 0, 0.25, 0.25],
-                function() { loadFace(0); }, 0.05
+                function() { loadFace(0); }, 0.075
         ));
 
-        mtx = [];
         faceButtonMaterials.push( 
             new VRButton(
                 vec3.fromValues(0.0, 0.1, 0.0), rot, scale, 
                 quadMesh, tex, new Material(vs, fs), [0.25, 0, 0.25, 0.25],
-                function() { loadFace(1); }, 0.05
+                function() { loadFace(1); }, 0.075
         ));
 
-        mtx = [];
         faceButtonMaterials.push( 
             new VRButton(
                 vec3.fromValues(0.15, 0.1, 0.0), rot, scale, 
                 quadMesh, tex, new Material(vs, fs), [0.5, 0, 0.25, 0.25],
-                function() { loadFace(2); }, 0.05
+                function() { loadFace(2); }, 0.075
         ));
 
-        mtx = [];
         faceButtonMaterials.push( 
             new VRButton(
                 vec3.fromValues(-0.15, -0.05, 0.0), rot, scale, 
                 quadMesh, tex, new Material(vs, fs), [0.75, 0, 0.25, 0.25],
-                function() { loadFace(3); }, 0.05
+                function() { loadFace(3); }, 0.075
         ));
 
-        mtx = [];
         faceButtonMaterials.push( 
             new VRButton(
                 vec3.fromValues(0.0, -0.05, 0.0), rot, scale, 
                 quadMesh, tex, new Material(vs, fs), [0.0, 0.25, 0.25, 0.25],
-                function() { loadFace(4); }, 0.05
+                function() { loadFace(4); }, 0.075
         ));
 
-        mtx = [];
         faceButtonMaterials.push( 
             new VRButton(
                 vec3.fromValues(0.15, -0.05, 0.0), rot, scale, 
                 quadMesh, tex, new Material(vs, fs), [0.25, 0.25, 0.25, 0.25],
-                function() { loadFace(5); }, 0.05
+                function() { loadFace(5); }, 0.075
         ));
 
-        mtx = [];
         faceButtonMaterials.push(
             new VRButton(
                 vec3.fromValues(0.0, -0.2, 0.0), rot, vec3.fromValues(0.1, 0.05, 0.05), 
@@ -111,7 +107,6 @@ function initGLVR()
                 null, 0.0 // function() { redirectToSketcfabModel(); }
         ));
 
-        mtx = [];
 
         rot = [];
         quat.fromEuler(rot, 0.0, 130.0, 0.0);
@@ -261,6 +256,7 @@ function updateVR()
                 {
                     setupVRScene();
                     _jellyFace.resetPositionData(true);
+                    _jellyFace.resetJiggleSound(1.5);
                     gResetPressed[g] = true;
                 }
                 else if( gResetPressed[g] && !resetDown)
@@ -352,6 +348,7 @@ function setupVRScene()
 {
 
     var pos = null;
+    var rot = null;
 
     if( vrDisplay.capabilities.hasPosition )
     {
@@ -434,10 +431,11 @@ function onVRPresentChange () {
 
         window.cancelAnimationFrame(animLoop);
         animLoop = vrDisplay.requestAnimationFrame(tick);
-
+        
         setupVRScene();
-
         _jellyFace.resetData();
+
+        _jellyFace.stopSounds();
 
     } else {    
         _jellyFace.setModelTransform(vec3.fromValues(0.0, 0.5, 0.0), quat.fromValues(0.0, 0.0, 0.0, 1.0), _jellyFace._modelScale);
