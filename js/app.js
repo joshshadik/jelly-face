@@ -398,8 +398,8 @@ function resize()
         _jellyFace.handleResize(canvas.width/2, canvas.height);
     }
     else{
-        var displayWidth  = window.innerWidth;
-        var displayHeight = window.innerHeight;
+        var displayWidth  = Math.floor(window.innerWidth * window.devicePixelRatio);
+        var displayHeight = Math.floor(window.innerHeight * window.devicePixelRatio);
 
         // Make the canvas the same size
         canvas.width  = displayWidth;
