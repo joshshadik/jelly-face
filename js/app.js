@@ -62,6 +62,8 @@ function start() {
         document.body.appendChild( stats.dom );
     }
 
+    Tone.context.latencyHint = "fastest";
+
     loadingElement = document.getElementById("loadingText");
 
     canvas = document.getElementById("glcanvas");

@@ -84,7 +84,7 @@ StretchSound.prototype.update = function(dt) {
         this._currentFactor = 0.0;
     }
 
-    this._oscillator.frequency.rampTo( this._frequency, 0.01 );
+    this._oscillator.frequency.rampTo( this._frequency, 0.05 );
 
     stretch = this._desiredVolume - this._volume;
 

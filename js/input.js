@@ -284,6 +284,15 @@ function updateHand(index, frame)
 {
     var hand = frame.hands[index];
 
+    if(hand.type == "left")
+    {
+        index = 0;
+    }
+    else
+    {
+        index = 1;
+    }
+
     var startPinch = false;
 
     var strength = Math.max(hand.grabStrength, hand.pinchStrength);
@@ -306,21 +315,22 @@ function updateHand(index, frame)
 
     _jellyFace.updateLeapHand(index, hand, startPinch);
 
+    return index;
 }
 
 function leapAnimate(frame)
 {
     if( frame.hands.length > 0 )
     {
-        updateHand(0, frame);
+        var index = updateHand(0, frame);
         if( frame.hands.length > 1 )
         {
             updateHand(1, frame);
         }
         else
         {
-            _jellyFace.updateLeapHand(1, null, false);
-            _jellyFace.endToolUse(1);
+            _jellyFace.updateLeapHand(index == 0 ? 1 : 0, null, false);
+            _jellyFace.endToolUse(index == 0 ? 1 : 0);
         }
     }
     else

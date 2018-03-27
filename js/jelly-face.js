@@ -740,12 +740,14 @@ class JellyFace {
             // mat4.invert(invVP, invVP);
 
             // this._velMaterial.setMatrix("uInvMVPMatrix", invVP);
+
+            for( var ss = 0; ss < this._stretchSounds.length; ++ss )
+            {
+                this._stretchSounds[ss].update(Time.deltaTime());
+            }
         }
 
-        for( var ss = 0; ss < this._stretchSounds.length; ++ss )
-        {
-            this._stretchSounds[ss].update(Time.deltaTime());
-        }
+
         
     }
 
