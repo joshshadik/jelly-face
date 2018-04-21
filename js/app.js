@@ -93,6 +93,8 @@ function loadFace(index)
     {
         //setupVRScene();
     }
+
+    ga('send', 'event', 'Face', 'load', models[index]);
 }
 
 function ready()

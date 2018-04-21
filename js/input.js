@@ -69,6 +69,7 @@ function handlePointerStart(event, sculpt, rotate, zoom)
 
         handlePointerMove(event, lastMouseX, lastMouseY, true, false, 0);
 
+        
         _jellyFace.startToolUse();
     }
     
@@ -110,7 +111,11 @@ function handleMouseDown(event) {
     var rotating = rightclick && !altKey;
     var zooming = rightclick && altKey;
     
-    
+    if( sculpting )
+    {
+        ga('send', 'event', 'Face', 'grab', 'mouse');
+    }
+
     handlePointerStart(event, 
         sculpting,
         rotating,
@@ -202,6 +207,11 @@ function handleTouchStart(event) {
     }
 
     lastTouchDist = -1;
+
+    if( touches.length == 1 )
+    {
+        ga('send', 'event', 'Face', 'grab', 'touch');
+    }
 
     handlePointerStart(event, 
     touches.length == 1,
@@ -313,6 +323,10 @@ function updateHand(index, frame)
         pinchDown[index] = false;
     }
 
+    if( startPinch )
+    {
+        ga('send', 'event', 'Face', 'grab', 'leap-motion');
+    }
     _jellyFace.updateLeapHand(index, hand, startPinch);
 
     return index;

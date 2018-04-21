@@ -283,6 +283,11 @@ function updateVR()
 
                 mat4.multiply(mtx, mtx, controllerOffset[index]);
 
+                if( pressed )
+                {
+                    ga('send', 'event', 'Face', 'grab', 'vr');
+                }
+                
                 _jellyFace.updateVRHand(index, mtx, pos, pressed, vrGamepads[g].buttons[1].pressed);
             }
         }
