@@ -113,7 +113,7 @@ function handleMouseDown(event) {
     
     if( sculpting )
     {
-        ga('send', 'event', 'Face', 'grab', 'mouse');
+        gtag( 'event', 'grab', { 'method' : 'mouse'} );
     }
 
     handlePointerStart(event, 
@@ -210,7 +210,7 @@ function handleTouchStart(event) {
 
     if( touches.length == 1 )
     {
-        ga('send', 'event', 'Face', 'grab', 'touch');
+        gtag( 'event', 'grab', { 'method' : 'touch'} );
     }
 
     handlePointerStart(event, 
@@ -325,7 +325,7 @@ function updateHand(index, frame)
 
     if( startPinch )
     {
-        ga('send', 'event', 'Face', 'grab', 'leap-motion');
+        gtag( 'event', 'grab', { 'method' : 'leap'} );
     }
     _jellyFace.updateLeapHand(index, hand, startPinch);
 

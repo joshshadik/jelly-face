@@ -285,7 +285,7 @@ function updateVR()
 
                 if( pressed )
                 {
-                    ga('send', 'event', 'Face', 'grab', 'vr');
+                    gtag( 'event', 'grab', { 'method' : 'vr'} );
                 }
                 
                 _jellyFace.updateVRHand(index, mtx, pos, pressed, vrGamepads[g].buttons[1].pressed);
