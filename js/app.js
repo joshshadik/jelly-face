@@ -47,6 +47,7 @@ var sketchfabURLS = [
 
 var modelIndex = 0;
 
+var grabCount = 0;
 
 
 //
@@ -94,7 +95,7 @@ function loadFace(index)
         //setupVRScene();
     }
 
-    gtag( 'event', 'load-face', { 'model' : models[index] } );
+    gtag( 'event', 'load-face', { 'event_label' : models[modelIndex] } );
 }
 
 function ready()

@@ -285,7 +285,7 @@ function updateVR()
 
                 if( pressed )
                 {
-                    gtag( 'event', 'grab', { 'method' : 'vr'} );
+                    gtag( 'event', 'grab', { 'event_label' : models[modelIndex] , 'value' : ++grabCount,  method : 'vr'} );
                 }
                 
                 _jellyFace.updateVRHand(index, mtx, pos, pressed, vrGamepads[g].buttons[1].pressed);

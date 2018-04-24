@@ -113,7 +113,7 @@ function handleMouseDown(event) {
     
     if( sculpting )
     {
-        gtag( 'event', 'grab', { 'method' : 'mouse'} );
+        gtag( 'event', 'grab', { 'event_label' : models[modelIndex], 'value' : ++grabCount, method : 'mouse'} );
     }
 
     handlePointerStart(event, 
@@ -210,7 +210,7 @@ function handleTouchStart(event) {
 
     if( touches.length == 1 )
     {
-        gtag( 'event', 'grab', { 'method' : 'touch'} );
+        gtag( 'event', 'grab', { 'event_label' : models[modelIndex], 'value' : ++grabCount, method : 'touch'} );
     }
 
     handlePointerStart(event, 
@@ -325,7 +325,7 @@ function updateHand(index, frame)
 
     if( startPinch )
     {
-        gtag( 'event', 'grab', { 'method' : 'leap'} );
+        gtag( 'event', 'grab', { 'event_label' : models[modelIndex], 'value' : ++grabCount, method : 'leap'} );
     }
     _jellyFace.updateLeapHand(index, hand, startPinch);
 
