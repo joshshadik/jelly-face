@@ -12,7 +12,7 @@ class JellyFace {
         this._initialized = false;
 
         this._cubeBatch = null; // batch of cubed voxels
- 
+
         this._voxelMaterials = [];    // materials to render the voxels with
         this._voxelMaterialIndex = 0; // index of material currently used
 
@@ -22,7 +22,7 @@ class JellyFace {
         this._copyFbo = null;   // framebuffer for copying framebuffer contents
         this._posFbo = null;
         this._velFbo = null;
-        
+
         this._desiredPosFbo = null;
 
         this._screenFbo = null;
@@ -63,7 +63,7 @@ class JellyFace {
 
         this._faceLoaded = false;
         this._faceColorSize = 4096;
-        
+
         this._shadowFboSize = 2048;
         this._shadowScreenScale = 0.5;
 
@@ -106,36 +106,54 @@ class JellyFace {
     }
 
 
-    loadFace(path, readyCallback)
+    loadFace(path, fromAvatar, readyCallback)
     {
         this._faceLoaded = false;
         var bufLayout = [ [0, 3], [12, 2], [20, 1] ];
         var self = this;
-        var meshPath = path + ".vbo";
-        var imgPath = path + ".jpg";
+
         if( !this._initialized )
         {
             this.init();
         }
-        
 
-        loadVBOFromURL(meshPath, 24, bufLayout, function(mesh) {
-            self._faceMesh = mesh;
+        if(fromAvatar)
+        {
+            var meshPath = path + "model.zip";
+            var imgPath = path + "texture.jpg";
 
-            self.resetPositionData();
+            loadAvatar(meshPath, function(mesh) {
+                self._faceMesh = mesh;
+                self.resetPositionData();
 
-            loadImageFromUrl(imgPath, function(tex) {   
-                self.handleTextureLoaded(tex);        
-                readyCallback();
+                loadImageFromUrl(imgPath, function(tex) {
+                    self.handleTextureLoaded(tex);
+                    readyCallback();
+                });
             });
+        }
+        else
+        {
+            var meshPath = path + ".vbo";
+            var imgPath = path + ".jpg";
+
+            loadVBOFromURL(meshPath, 24, bufLayout, function(mesh) {
+                self._faceMesh = mesh;
+                self.resetPositionData();
+
+                loadImageFromUrl(imgPath, function(tex) {
+                    self.handleTextureLoaded(tex);
+                    readyCallback();
+                });
+            });
+        }
 
 
-        });
     }
 
     resetPositionData( justDesired = false)
     {
-        
+
         var initPosVS = Material.createShader(shaders.vs.initPos, gl.VERTEX_SHADER);
         var initDataMaterial = new Material( initPosVS, this.vColorFS );
         initDataMaterial.addVertexAttribute("aPos");
@@ -144,18 +162,18 @@ class JellyFace {
         initDataMaterial.setMatrix("uVMatrix", this._vMatrix );
         initDataMaterial.setMatrix("uMMatrix", this._mMatrix );
         initDataMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
-        
+
         gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
-        
+
         this.renderDataBuffer( justDesired ? this._desiredPosFbo.fbo() : this._posFbo.fbo(), initDataMaterial, this._faceMesh, gl.POINTS );
 
         if( !justDesired )
             this.copyPosToDesired();
 
-        
-        gl.bindFramebuffer( gl.FRAMEBUFFER, null ); 
-        gl.viewport(0, 0, this._renderWidth, this._renderHeight);        
+
+        gl.bindFramebuffer( gl.FRAMEBUFFER, null );
+        gl.viewport(0, 0, this._renderWidth, this._renderHeight);
     }
 
     resetData()
@@ -176,7 +194,7 @@ class JellyFace {
     {
         var texelData = gl.FLOAT;
         var internalFormat = gl.RGBA;
-    
+
         // need either floating point, or half floating point precision for holding position and velocity data
         if( _supportsWebGL2 )
         {
@@ -186,13 +204,13 @@ class JellyFace {
                 internalFormat = gl.RGBA32F;
             }
             else
-            {            
-                alert("This experiment requires the WebGL 2.0 extension EXT_color_buffer_float. Maybe try another web browser.");                
+            {
+                alert("This experiment requires the WebGL 2.0 extension EXT_color_buffer_float. Maybe try another web browser.");
             }
         }
         else
         {
-        
+
             var ext = gl.getExtension("OES_texture_float");
             if( ext == null )
             {
@@ -225,7 +243,7 @@ class JellyFace {
 
         var orthoSize = 0.8;
         mat4.ortho( this._lightPerspective, -orthoSize, orthoSize, -orthoSize, orthoSize, 1.0, 10.0 );
-        
+
         this._cameraRotation = quat.create();
         this._cameraPosition = vec3.fromValues(0, 0.6, 1.0 );
         this._cameraUp = vec3.fromValues(0.0, 1.0, 0.0 );
@@ -234,10 +252,10 @@ class JellyFace {
         this.setHandRootTransform(vec3.fromValues(0.0, 0.25, 0.25), this._modelRotation, vec3.fromValues(0.001, 0.001, 0.001));
 
         this.setFloorPosition(vec3.fromValues(0.0, 0.0, 0.0));
-              
+
         mat4.fromRotationTranslation( this._cameraMatrix, this._cameraRotation, this._cameraPosition );
         mat4.invert(this._vMatrix, this._cameraMatrix);
-    
+
     }
 
 
@@ -246,13 +264,13 @@ class JellyFace {
     //
     // initializes framebuffers, render textures, and materials
     //
-    initParticleData() 
+    initParticleData()
     {
         var formats = this.getFloat32Format();
 
         var texelData = formats["texelData"];
         var internalFormat = formats["internalFormat"];
-    
+
         this._posFbo = new Framebuffer(
             [new Texture(JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE(), internalFormat, gl.RGBA, texelData)], null,
             JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE()
@@ -280,7 +298,7 @@ class JellyFace {
                 JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE()
             ));
         }
-        
+
 
         var depthInternal = _supportsWebGL2 ? gl.DEPTH_COMPONENT24 : gl.DEPTH_COMPONENT;
 
@@ -295,41 +313,41 @@ class JellyFace {
             [new Texture(this._faceColorSize, this._faceColorSize, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE )], null,
             this._faceColorSize, this._faceColorSize
         );
-        
+
 
         this.setupScreenBuffer();
 
         this._screenQuadMesh = new Mesh(quadVertices, quadVertexIndices);
         this._floorMesh = new Mesh(floorVertices, floorIndices);
-    
+
         gl.bindTexture(gl.TEXTURE_2D, null);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        
-        
+
+
 
         // setup data materials
         var quadVS = Material.createShader(shaders.vs.quad, gl.VERTEX_SHADER);
 
-        var copyFS = Material.createShader(shaders.fs.copy, gl.FRAGMENT_SHADER);     
-        var posFS = Material.createShader(shaders.fs.pos, gl.FRAGMENT_SHADER);  
+        var copyFS = Material.createShader(shaders.fs.copy, gl.FRAGMENT_SHADER);
+        var posFS = Material.createShader(shaders.fs.pos, gl.FRAGMENT_SHADER);
         var composeFS = Material.createShader(shaders.fs.compose, gl.FRAGMENT_SHADER);
 
         var shadowScreenFS = Material.createShader(shaders.fs.shadowBuffer, gl.FRAGMENT_SHADER);
-        
+
         var velVS = Material.createShader(shaders.vs.vel, gl.VERTEX_SHADER);
         var vel3DVS = Material.createShader(shaders.vs.vel3D, gl.VERTEX_SHADER);
 
         var grabVS = Material.createShader(shaders.vs.grab, gl.VERTEX_SHADER);
         var grab3DVS = Material.createShader(shaders.vs.grab3D, gl.VERTEX_SHADER);
 
-        this.vColorFS = Material.createShader(shaders.fs.vColor, gl.FRAGMENT_SHADER);      
+        this.vColorFS = Material.createShader(shaders.fs.vColor, gl.FRAGMENT_SHADER);
 
         var floorVS = Material.createShader(shaders.vs.floor, gl.VERTEX_SHADER);
         var floorFS = Material.createShader(shaders.fs.floor, gl.FRAGMENT_SHADER);
 
         var handVS = Material.createShader(shaders.vs.hand, gl.VERTEX_SHADER);
         var handFS = Material.createShader(shaders.fs.hand, gl.FRAGMENT_SHADER);
-        
+
 
         this._velMaterial = new Material(velVS, this.vColorFS);
         this._velMaterial.setTexture("uPosTex", this._posFbo.color().native());
@@ -339,7 +357,7 @@ class JellyFace {
         this._velMaterial.addVertexAttribute("aVertexID");
 
         this._velMaterial.setFloat("uRadius", 0.25 );
-        this._velMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);   
+        this._velMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);
         this._velMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
 
         this._vel3DMaterial = new Material(vel3DVS, this.vColorFS);
@@ -353,7 +371,7 @@ class JellyFace {
         this._vel3DMaterial.addVertexAttribute("aVertexID");
 
         this._vel3DMaterial.setFloat("uRadius", 0.18 );
-        this._vel3DMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);   
+        this._vel3DMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);
         this._vel3DMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
 
         this._posMaterial = new Material(quadVS, posFS);
@@ -367,7 +385,7 @@ class JellyFace {
         this._grabMaterial.addVertexAttribute("aVertexID");
 
         this._grabMaterial.setFloat("uRadius", 0.25 );
-        this._grabMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);   
+        this._grabMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);
         this._grabMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
 
         this._grab3DMaterial = new Material(grab3DVS, this.vColorFS);
@@ -375,11 +393,11 @@ class JellyFace {
         this._grab3DMaterial.addVertexAttribute("aVertexID");
 
         this._grab3DMaterial.setFloat("uRadius", 0.18 );
-        this._grab3DMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);   
+        this._grab3DMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);
         this._grab3DMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
-        
+
         // material to copy 1 texture into another
-        this._copyMaterial = new Material(quadVS, copyFS);   
+        this._copyMaterial = new Material(quadVS, copyFS);
         this._copyMaterial.setTexture("uCopyTex", this._copyFbo.color().native() );
         this._copyMaterial.addVertexAttribute("aPos");
 
@@ -399,7 +417,7 @@ class JellyFace {
         this._handMaterial.setMatrix("uPMatrix", this._pMatrix);
         this._handMaterial.setMatrix("uVMatrix", this._vMatrix);
         this._handMaterial.setMatrix("uMMatrix", this._handsMatrix);
-        
+
 
         this._floorMaterials = [new Material(floorVS, floorFS)];
 
@@ -410,7 +428,7 @@ class JellyFace {
             this._floorMaterials[i].setMatrix("uVMatrix", this._vMatrix );
             this._floorMaterials[i].setMatrix("uMMatrix", this._floorMatrix );
         }
-        
+
 
     }
 
@@ -419,10 +437,10 @@ class JellyFace {
     //
     // Initializes materials for cubes
     //
-    initMaterials() 
+    initMaterials()
     {
         this._voxelMaterials.length = 2;
-        
+
         var faceVS = Material.createShader(shaders.vs.face, gl.VERTEX_SHADER);
         var faceFS = Material.createShader(shaders.fs.face, gl.FRAGMENT_SHADER);
 
@@ -453,7 +471,7 @@ class JellyFace {
             this._faceMaterials[i].setMatrix("uMMatrix", this._mMatrix );
 
         }
-        
+
         this._velMaterial.setMatrix("uPMatrix", this._pMatrix );
         this._velMaterial.setMatrix("uVMatrix", this._vMatrix );
         this._velMaterial.setMatrix("uMMatrix", this._mMatrix );
@@ -476,7 +494,7 @@ class JellyFace {
         this.updateScreenBufferMaterials();
     }
 
-    
+
     setupScreenBuffer()
     {
         var texelData = gl.UNSIGNED_BYTE;
@@ -498,7 +516,7 @@ class JellyFace {
         }
 
         var depthTex = new Texture(width, height, depthInternal, gl.DEPTH_COMPONENT, gl.UNSIGNED_INT);
-        
+
         if( this._screenFbo )
         {
             this._screenFbo.setup( colorTexs, depthTex, width, height );
@@ -553,7 +571,7 @@ class JellyFace {
             {
                 this._composeMaterial.setTexture("uColTex", this._screenColorFbo.color(0).native());
             }
-            
+
             this._composeMaterial.setTexture("uPosTex", this._screenFbo.color(0).native());
             this._composeMaterial.setFloat("uAspect", height / width);
 
@@ -561,7 +579,7 @@ class JellyFace {
         }
 
         if( this._shadowScreenMaterial )
-        {           
+        {
             if( _supportsWebGL2 )
             {
                 this._shadowScreenMaterial.setTexture("uColTex", this._screenFbo.color(1).native());
@@ -578,13 +596,13 @@ class JellyFace {
         if( this._velMaterial)
         {
             this._velMaterial.setVec2("uCanvasSize", new Float32Array([width, height]));
-            this._velMaterial.setFloat("uAspect", height / width);   
+            this._velMaterial.setFloat("uAspect", height / width);
         }
-        
+
         if( this._vel3DMaterial)
         {
             this._vel3DMaterial.setVec2("uCanvasSize", new Float32Array([width, height]));
-            this._vel3DMaterial.setFloat("uAspect", height / width);   
+            this._vel3DMaterial.setFloat("uAspect", height / width);
         }
 
         if( this._grabMaterial )
@@ -601,20 +619,20 @@ class JellyFace {
         this._copyMaterial.setTexture("uCopyTex", texture );
         gl.bindFramebuffer( gl.FRAMEBUFFER, renderBuffer );
         gl.clear( gl.COLOR_BUFFER_BIT );
-    
+
         this._copyMaterial.apply();
 
         this._screenQuadMesh.render();
 
         this._copyMaterial.unapply();
-        
+
         this._copyMaterial.setTexture("uCopyTex", this._copyFbo.color().native() );
-        
+
         Framebuffer.bindDefault();
     }
 
     handleTextureLoaded( texture) {
-    
+
         this.blit(texture, this._faceColorBuffer.fbo(), this._faceColorSize, this._faceColorSize );
 
         this._faceLoaded = true;
@@ -630,22 +648,22 @@ class JellyFace {
     // using a buffer inbetween so it can use it's previous frame texture as data
     //
     renderDataBuffer( dataBuffer, dataMaterial, mesh, primitive = gl.TRIANGLES )
-    {    
+    {
         // render data into copy texture
         gl.bindFramebuffer( gl.FRAMEBUFFER, this._copyFbo.fbo() );
         gl.clear( gl.COLOR_BUFFER_BIT );
-        
-        dataMaterial.apply();     
+
+        dataMaterial.apply();
         mesh.render(primitive);
         dataMaterial.unapply();
-        
-        
+
+
         // render copy texture into data texture
         gl.bindFramebuffer( gl.FRAMEBUFFER, dataBuffer );
         gl.clear( gl.COLOR_BUFFER_BIT );
-    
-        this._copyMaterial.apply(); 
-        this._screenQuadMesh.render(); 
+
+        this._copyMaterial.apply();
+        this._screenQuadMesh.render();
         this._copyMaterial.unapply();
     }
 
@@ -654,11 +672,11 @@ class JellyFace {
     //
     // Renders updates into the voxel data texture
     //
-    renderParticleData(deltaTime) 
+    renderParticleData(deltaTime)
     {
         gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
-        
+
         this._posMaterial.setFloat("uDeltaTime", deltaTime );
         this._velMaterial.setFloat("uDeltaTime", deltaTime );
         this._vel3DMaterial.setFloat("uDeltaTime", deltaTime );
@@ -667,7 +685,7 @@ class JellyFace {
 
         this.renderDataBuffer( this._velFbo.fbo(), use3D ? this._vel3DMaterial : this._velMaterial, this._faceMesh, gl.POINTS );
         this.renderDataBuffer( this._posFbo.fbo(), this._posMaterial, this._screenQuadMesh );
-        
+
         Framebuffer.bindDefault();
     }
 
@@ -705,8 +723,8 @@ class JellyFace {
 
     init()
     {
-        this.initTransforms();  
-        this.initParticleData();      
+        this.initTransforms();
+        this.initParticleData();
         this.initMaterials();
         this._initialized = true;
     }
@@ -723,9 +741,9 @@ class JellyFace {
             // this._faceMaterials[0].setMatrix("uMMatrix", this._mMatrix);
             // this._faceMaterials[0].setMatrix("uVMatrix", this._vMatrix);
 
-            // this._voxelMaterials[this._voxelMaterialIndex].setMatrix("uMMatrix", this._mMatrix );  
+            // this._voxelMaterials[this._voxelMaterialIndex].setMatrix("uMMatrix", this._mMatrix );
             // this._voxelMaterials[this._voxelMaterialIndex].setMatrix("uVMatrix", this._vMatrix );
-        
+
             // this._velMaterial.setMatrix("uMMatrix", this._mMatrix);
             // this._velMaterial.setMatrix("uVMatrix", this._vMatrix);
 
@@ -748,7 +766,7 @@ class JellyFace {
         }
 
 
-        
+
     }
 
     postUpdate()
@@ -756,18 +774,18 @@ class JellyFace {
 
     }
 
-    
+
     debugPosBuffer()
-    {   
+    {
         gl.bindFramebuffer( gl.FRAMEBUFFER, null );
         gl.viewport(0, 0, 512, 512);
         //gl.clear( gl.COLOR_BUFFER_BIT );
-    
+
         this._copyMaterial.setTexture("uCopyTex", this._screenFbo.color(0).native() );
-        this._copyMaterial.apply();   
+        this._copyMaterial.apply();
         this._screenQuadMesh.render();
         this._copyMaterial.unapply();
-        
+
         this._copyMaterial.setTexture("uCopyTex", this._copyFbo.color().native() );
         //this.blit( this._posFbo.color().native(), null, 512, 512);
     }
@@ -789,7 +807,7 @@ class JellyFace {
     }
 
     render(viewMatrix = null, projMatrix = null,  rect = null)
-    {   
+    {
 
         if( viewMatrix )
         {
@@ -810,7 +828,7 @@ class JellyFace {
         gl.clearColor( 0.9, 0.9, 0.9, 0.0 );
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
-        
+
 
 
         if( _supportsWebGL2 )
@@ -832,16 +850,16 @@ class JellyFace {
             this._faceMesh.render();
             this._faceMaterials[0].unapply();
 
-    
+
             if( _supportsWebGL2 )
             {
                 gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
             }
-    
+
             this._floorMaterials[0].apply();
             this._floorMesh.render();
             this._floorMaterials[0].unapply();
-    
+
         }
 
 
@@ -850,7 +868,7 @@ class JellyFace {
         if(!_supportsWebGL2 )
         {
             this._screenColorFbo.bind();
-    
+
             gl.clearColor( 0.9, 0.9, 0.9, 0.0 );
             gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -858,7 +876,7 @@ class JellyFace {
             {
                 this._hands[hh].render(this._handMaterial);
             }
-        
+
             this.renderVRButtons(viewMatrix, projMatrix);
 
             if( this._faceLoaded )
@@ -895,8 +913,8 @@ class JellyFace {
         {
             Framebuffer.bindDefault();
         }
-    
-    
+
+
 
         this._composeMaterial.apply();
         this._screenQuadMesh.render();
@@ -911,7 +929,7 @@ class JellyFace {
         this._renderHeight = height;
 
         mat4.perspective(this._pMatrix, 45, width/height, 0.01, 50.0);
-     
+
         // Set the viewport to match
         gl.viewport(0, 0, width,height);
 
@@ -968,13 +986,13 @@ class JellyFace {
     {
         var verticalRot = quat.create();
         quat.rotateX(verticalRot, verticalRot, dY * 30.0 );
-        
+
         var horizontalRot = quat.create();
         quat.rotateY(horizontalRot, horizontalRot, dX * 5.0 );
 
         // var horizontalRotCamera = quat.create();
         // quat.rotateY(horizontalRotCamera, horizontalRotCamera, dX * 25.0);
-        
+
         quat.multiply( this._modelRotation, horizontalRot, this._modelRotation );
         //quat.multiply( this._cameraRotation, horizontalRotCamera, this._cameraRotation );
     }
@@ -983,9 +1001,9 @@ class JellyFace {
     {
         gl.viewport(0, 0, JellyFace.RT_TEX_SIZE(), JellyFace.RT_TEX_SIZE());
         gl.clearColor(0.0, 0.0, 0.0, 0.0);
-        
+
         this.renderDataBuffer( this._grabBuffers[index].fbo(), grab3D ? this._grab3DMaterial : this._grabMaterial, this._faceMesh, gl.POINTS );
-        
+
         Framebuffer.bindDefault();
 
         this._using3DTool = grab3D;
@@ -1017,9 +1035,9 @@ class JellyFace {
     }
 
     handleToolUse(nX, nY)
-    {      
-        this._velMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, -1.0]);   
-        this._grabMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, -1.0]);          
+    {
+        this._velMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, -1.0]);
+        this._grabMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, -1.0]);
     }
 
     handleMouseMove(nX, nY)
@@ -1171,7 +1189,7 @@ class JellyFace {
 
         quat.rotateX(this._lightRotation, quat.create(), -0.778);
         quat.multiply(this._lightRotation, this._modelRotation, this._lightRotation);
-        
+
 
         mat4.fromRotationTranslation( this._lightView, this._lightRotation, this._lightPosition );
         mat4.invert(this._lightView, this._lightView);
@@ -1180,7 +1198,7 @@ class JellyFace {
     }
 
     setHandRootTransform(position, rotation, scale, multiplyByCamera = false)
-    {       
+    {
         mat4.fromRotationTranslationScale(this._handsMatrix, rotation, position, scale);
 
         if( multiplyByCamera )
@@ -1239,7 +1257,7 @@ var quadVertices = [
 ];
 
 var quadVertexIndices = [
-    0,  1,  2,      
+    0,  1,  2,
     0,  2,  3
 ];
 

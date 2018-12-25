@@ -77,6 +77,8 @@ function start() {
         initWebGL(false);
     }
 
+
+
     //initWebGL();
 }
 
@@ -86,13 +88,26 @@ function loadFace(index)
     isLoading = true;
     loadingElement.style.display = "";
     // vertexAttributeToggler.currAttributes = 0x0;
-    _jellyFace.loadFace("./assets/" + models[index], ready);
+    _jellyFace.loadFace("./assets/" + models[index], false, ready);
     document.getElementById("attributions").innerHTML = credits[index];
 
     if( vrDisplay && vrDisplay.isPresenting )
     {
         //setupVRScene();
     }
+}
+
+function loadAvatarFace(avatar)
+{
+    isLoading = true;
+    loadingElement.style.display = "";
+    _jellyFace.loadFace("./assets/" + avatar + "/", true, ready);
+    document.getElementById("attributions").innerHTML = "";
+}
+
+function loadCustomFace(url)
+{
+
 }
 
 function ready()
@@ -323,12 +338,18 @@ function initWebGL(preserveBuffer = false) {
         if(isMobile)
         {
             //_jellyFace._shadowsEnabled = false;
-            _jellyFace._shadowFboSize = 768;
+            _jellyFace._shadowFboSize = 1024;
             _jellyFace._shadowScreenScale = 0.25;
         }
 
         shaders.shaderSetLoaded = function() {
-            loadFace(modelIndex);
+            if(window.location.hash) {
+                var hash = window.location.hash.substring(1); //Puts hash in variable, and removes the # character
+                loadAvatarFace(hash);
+            } else {
+                loadFace(modelIndex);
+            }
+            
             initGLVR();
         }
         
