@@ -103,6 +103,8 @@ class JellyFace {
 
         this._renderWidth = canvas.width;
         this._renderHeight = canvas.height;
+
+        this._mouseDistance = 0.98;
     }
 
 
@@ -125,6 +127,7 @@ class JellyFace {
             loadAvatar(meshPath, function(mesh) {
                 self._faceMesh = mesh;
                 self.resetPositionData();
+                //self.copyPosToDesired();
 
                 loadImageFromUrl(imgPath, function(tex) {
                     self.handleTextureLoaded(tex);
@@ -140,6 +143,7 @@ class JellyFace {
             loadVBOFromURL(meshPath, 24, bufLayout, function(mesh) {
                 self._faceMesh = mesh;
                 self.resetPositionData();
+                //self.copyPosToDesired();
 
                 loadImageFromUrl(imgPath, function(tex) {
                     self.handleTextureLoaded(tex);
@@ -253,7 +257,7 @@ class JellyFace {
 
         this.setFloorPosition(vec3.fromValues(0.0, 0.0, 0.0));
 
-        mat4.fromRotationTranslation( this._cameraMatrix, this._cameraRotation, this._cameraPosition );
+        mat4.fromTranslation( this._cameraMatrix, this._cameraPosition );
         mat4.invert(this._vMatrix, this._cameraMatrix);
 
     }
@@ -356,9 +360,10 @@ class JellyFace {
         this._velMaterial.addVertexAttribute("aPos");
         this._velMaterial.addVertexAttribute("aVertexID");
 
-        this._velMaterial.setFloat("uRadius", 0.25 );
+        this._velMaterial.setFloat("uRadius", 0.1 );
         this._velMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);
         this._velMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
+        this._velMaterial.setTexture("uDesiredPosTex", this._desiredPosFbo.color().native());
 
         this._vel3DMaterial = new Material(vel3DVS, this.vColorFS);
         this._vel3DMaterial.setTexture("uDesiredPosTex", this._desiredPosFbo.color().native());
@@ -384,7 +389,7 @@ class JellyFace {
         this._grabMaterial.setTexture("uPosTex", this._posFbo.color().native());
         this._grabMaterial.addVertexAttribute("aVertexID");
 
-        this._grabMaterial.setFloat("uRadius", 0.25 );
+        this._grabMaterial.setFloat("uRadius", 0.1 );
         this._grabMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);
         this._grabMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
 
@@ -733,7 +738,10 @@ class JellyFace {
     {
         if( this._faceLoaded )
         {
-            mat4.fromRotationTranslation( this._cameraMatrix, this._cameraRotation, this._cameraPosition);
+            mat4.fromTranslation( this._cameraMatrix, this._cameraPosition);
+            var rotMtx = [];
+            mat4.fromQuat(rotMtx, this._cameraRotation);
+            mat4.multiply(this._cameraMatrix, rotMtx, this._cameraMatrix);
             mat4.invert(this._vMatrix, this._cameraMatrix);
             mat4.fromRotationTranslationScale( this._mMatrix, this._modelRotation, this._modelPosition, this._modelScale );
 
@@ -787,7 +795,7 @@ class JellyFace {
         this._copyMaterial.unapply();
 
         this._copyMaterial.setTexture("uCopyTex", this._copyFbo.color().native() );
-        //this.blit( this._posFbo.color().native(), null, 512, 512);
+        this.blit( this._desiredPosFbo.color().native(), null, 512, 512);
     }
 
 
@@ -920,7 +928,7 @@ class JellyFace {
         this._screenQuadMesh.render();
         this._composeMaterial.unapply();
 
-        // this.debugPosBuffer();
+        //this.debugPosBuffer();
     }
 
     handleResize(width, height)
@@ -946,10 +954,12 @@ class JellyFace {
         }
         this._velMaterial.setMatrix("uVMatrix", view);
         this._handMaterial.setMatrix("uVMatrix", view);
+        this._grabMaterial.setMatrix("uVMatrix", view);
 
         this._velMaterial.setMatrix("uPMatrix", proj);
         this._handMaterial.setMatrix("uPMatrix", proj);
-
+        this._grabMaterial.setMatrix("uPMatrix", proj);
+        
         for( var i = 0; i < this._floorMaterials.length; ++i )
         {
             this._floorMaterials[i].setMatrix("uVMatrix", view);
@@ -958,7 +968,7 @@ class JellyFace {
 
         var invVP = [];
         //mat4.multiply(invVP, this._vMatrix, this._mMatrix);
-        mat4.multiply(invVP, proj, this._cameraMatrix); // , invVP);
+        mat4.multiply(invVP, proj, view); // , invVP);
         mat4.invert(invVP, invVP);
 
         this._velMaterial.setMatrix("uInvMVPMatrix", invVP);
@@ -990,10 +1000,10 @@ class JellyFace {
         var horizontalRot = quat.create();
         quat.rotateY(horizontalRot, horizontalRot, dX * 5.0 );
 
-        // var horizontalRotCamera = quat.create();
-        // quat.rotateY(horizontalRotCamera, horizontalRotCamera, dX * 25.0);
+        var horizontalRotCamera = quat.create();
+        quat.rotateY(horizontalRotCamera, horizontalRotCamera, dX * 25.0);
 
-        quat.multiply( this._modelRotation, horizontalRot, this._modelRotation );
+        quat.multiply( this._cameraRotation, horizontalRot, this._cameraRotation );
         //quat.multiply( this._cameraRotation, horizontalRotCamera, this._cameraRotation );
     }
 
@@ -1036,14 +1046,14 @@ class JellyFace {
 
     handleToolUse(nX, nY)
     {
-        this._velMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, -1.0]);
-        this._grabMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, -1.0]);
+        this._velMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, this._mouseDistance]);
+        this._grabMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, this._mouseDistance]);
     }
 
     handleMouseMove(nX, nY)
     {
-        this._velMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, -1.0]);
-        this._grabMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, -1.0]);
+        this._velMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, this._mouseDistance]);
+        this._grabMaterial.setVec3("uMousePos", [ nX * 0.5 + 0.5, nY * 0.5 + 0.5, this._mouseDistance]);
 
         if( this._toolInUse[0] )
         {
@@ -1053,6 +1063,11 @@ class JellyFace {
 
     changeBrushSize(brushSize) {
         this._velMaterial.setFloat("uRadius", brushSize);
+    }
+
+    getGrabPosition() {
+        this._screenFbo.bind();
+        //var pixels = new Float32Array()
     }
 
     getVoxTextureCPU() {

@@ -80,7 +80,10 @@ function handlePointerEnd(event, sculpt)
     if(sculpt)
     {
         _jellyFace.endToolUse();
+        //_jellyFace.copyPosToDesired();
     }
+
+    //_jellyFace.copyPosToDesired();
 }
 
 function handleMouseDown(event) {
