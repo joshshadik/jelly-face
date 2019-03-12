@@ -53,7 +53,12 @@ function initGLVR()
     var fs = Material.createShader(shaders.fs.texturedQuad, gl.FRAGMENT_SHADER);
 
     var self = this;
-    loadImageFromUrl("./assets/vr_atlas.png", function(tex) {
+    var atlasUrl = "./assets/vr_atlas.png";
+    if(diaMode)
+    {
+        atlasUrl = "./assets/vr_atlas_dia.png";
+    }
+    loadImageFromUrl(atlasUrl, function(tex) {
 
         var scale = vec3.fromValues(0.05, 0.05, 0.05);
         var rot = quat.create();
@@ -198,7 +203,7 @@ function updateVR()
         {
             var mtx = [];
 
-            if( vrGamepads[g].pose.hasPosition && vrGamepads[g].pose.position )
+            if( vrGamepads[g].pose != null && vrGamepads[g].pose.hasPosition && vrGamepads[g].pose.position )
             {
                 var pp = vrGamepads[g].pose.position;
                 var pos = vec3.fromValues(pp[0], pp[1], pp[2]);
