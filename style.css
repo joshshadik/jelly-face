@@ -33,16 +33,19 @@
 
 #iconContainer {
     position: absolute;
-    top: 2%;
+    top: 0%;
     left: 0%;
     right: 0%;
-
     user-select: none;
     -moz-user-select: none;
 }
 
 #iconRow {
     text-align: center;
+
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
 }
 
 #vrContainer {
@@ -50,6 +53,7 @@
     bottom: 0%;
     right: 1%;
     text-align: center;
+    display: inline-block;
 
     user-select: none;
     -moz-user-select: none;

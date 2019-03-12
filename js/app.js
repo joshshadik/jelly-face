@@ -46,6 +46,7 @@ var sketchfabURLS = [
 ];
 
 var modelIndex = 0;
+var diaMode = false;
 
 var grabCount = 0;
 
@@ -85,6 +86,13 @@ function start() {
 
 function loadFace(index)
 {
+    if(diaMode)
+    {
+        loadAvatarFace(models[index], "Created from artwork on display at the Detroit Institute of Arts");
+        modelIndex = index;
+        return;
+    }
+
     modelIndex = index;
     isLoading = true;
     loadingElement.style.display = "";
@@ -92,25 +100,15 @@ function loadFace(index)
     _jellyFace.loadFace("./assets/" + models[index], false, ready);
     document.getElementById("attributions").innerHTML = credits[index];
 
-    if( vrDisplay && vrDisplay.isPresenting )
-    {
-        //setupVRScene();
-    }
-
     gtag( 'event', 'load-face', { 'event_label' : models[modelIndex] } );
 }
 
-function loadAvatarFace(avatar)
+function loadAvatarFace(avatar, attribution = "")
 {
     isLoading = true;
     loadingElement.style.display = "";
     _jellyFace.loadFace("./assets/" + avatar + "/", true, ready);
-    document.getElementById("attributions").innerHTML = "";
-}
-
-function loadCustomFace(url)
-{
-
+    document.getElementById("attributions").innerHTML = attribution;
 }
 
 function ready()
@@ -348,7 +346,21 @@ function initWebGL(preserveBuffer = false) {
         shaders.shaderSetLoaded = function() {
             if(window.location.hash) {
                 var hash = window.location.hash.substring(1); //Puts hash in variable, and removes the # character
-                loadAvatarFace(hash);
+                if(window.location.hash == "#dia")
+                {
+                    models = [ "dia0", "dia1", "dia2", "dia3", "dia4", "dia5"];
+                    for(var i = 0; i < 6; ++i)
+                    {
+                        var tagId = "icon" + i.toString();
+                        document.getElementById(tagId).src = "./icons/" + models[i] + ".jpg";
+                    }
+                    diaMode = true;
+                    loadFace(modelIndex);
+                }
+                else
+                {
+                    loadAvatarFace(hash);
+                }
             } else {
                 loadFace(modelIndex);
             }
