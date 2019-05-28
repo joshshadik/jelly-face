@@ -17,6 +17,8 @@ var faceButtonMaterials = [];
 
 var gamepadType = null;
 
+var resetScene = false;
+
 function initVR()
 {
     frameData = new VRFrameData();
@@ -131,6 +133,13 @@ function initGLVR()
 
 function updateVR()
 {
+    if(resetScene)
+    {
+        setupVRScene();
+        _jellyFace.resetData();
+        resetScene = false;
+    }
+    
     vrDisplay.getFrameData(frameData);
 
     vrGamepads = [];
@@ -417,7 +426,7 @@ function setupVRScene()
 
     if( !pos )
     {
-        pos = vec3.fromValues(0.0, 1.0, -0.65);
+        pos = vec3.fromValues(0.0, 1.2, -0.65);
     }
 
     if( !rot )
@@ -458,9 +467,9 @@ function onVRPresentChange () {
         window.cancelAnimationFrame(animLoop);
         animLoop = vrDisplay.requestAnimationFrame(tick);
         
-        setupVRScene();
-        _jellyFace.resetData();
-
+        
+        resetScene = true;
+        
         _jellyFace.stopSounds();
 
         _backgroundColor = [0.1, 0.1, 0.1, 1.0];
