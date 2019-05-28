@@ -8,11 +8,15 @@ in vec2 vTexcoord;
 in vec3 vColor;
 in vec2 vTexcoordLocal;
 
-layout(location = 0) out vec4 position;
-layout(location = 1) out vec4 color;
+layout(location = 0) out vec4 color;
 
 void main(void) {
     color = texture(uColorTex, vTexcoord);
+    color += texture(uColorTex, vTexcoord + vec2(0.001, 0.001));
+    color += texture(uColorTex, vTexcoord + vec2(0.001, -0.001));
+    color += texture(uColorTex, vTexcoord + vec2(-0.001, 0.001));
+    color += texture(uColorTex, vTexcoord + vec2(-0.001, -0.001));
+    color *= 0.2;
 
     vec4 edge = vec4(smoothstep(0.95, 0.99, vTexcoordLocal), smoothstep(0.05, 0.01, vTexcoordLocal));
 
@@ -23,5 +27,4 @@ void main(void) {
 
     color = color * (1.0 - hover) + vec4(0.0, 1.0, 1.0, 1.0) * hover;
 
-    position = vec4(vColor, 1.0);
 }

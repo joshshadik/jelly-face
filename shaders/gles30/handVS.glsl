@@ -14,7 +14,7 @@ out vec4 vPos;
 
 void main(void) {
     vPos = uMMatrix * vec4(aPos, 1.0);
-    vColor = vec4(1.0, 0.0, 0.0, 1.0);
+    vColor = vec4(0.8, 0.1, 0.1, 1.0);
     vec4 pos = uPMatrix * uVMatrix * vPos;
     gl_Position = pos;
     float zd = max(pos.z / pos.w, 0.5 );

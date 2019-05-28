@@ -26,6 +26,7 @@ function initVR()
             vrDisplay.depthNear = 0.1;
             vrDisplay.depthFar = 1024.0;
             initWebGL(vrDisplay.capabilities.hasExternalDisplay);
+
             if (vrDisplay.stageParameters &&
                 vrDisplay.stageParameters.sizeX > 0 &&
                 vrDisplay.stageParameters.sizeZ > 0) {
@@ -53,7 +54,7 @@ function initGLVR()
     var fs = Material.createShader(shaders.fs.texturedQuad, gl.FRAGMENT_SHADER);
 
     var self = this;
-    var atlasUrl = "./assets/vr_atlas.png";
+    var atlasUrl = "./assets/vr_atlas.jpg";
     if(diaMode)
     {
         atlasUrl = "./assets/vr_atlas_dia.png";
@@ -109,7 +110,7 @@ function initGLVR()
             new VRButton(
                 vec3.fromValues(0.0, -0.2, 0.0), rot, vec3.fromValues(0.1, 0.05, 0.05), 
                 quadMesh, tex, new Material(vs, fs), [0.5, 0.25, 0.5, 0.25],
-                null, 0.0 // function() { redirectToSketcfabModel(); }
+                null, 0.0 //function() { redirectToSketcfabModel(); }, 0.1
         ));
 
 
@@ -120,7 +121,7 @@ function initGLVR()
             new VRButton(
                 vec3.fromValues(-0.5, 0.0, 1.25), rot, vec3.fromValues(0.3, 0.15, 0.05), 
                 quadMesh, tex, new Material(vs, fs), [0.0, 0.5, 1.0, 0.5],
-                null, 0.0 // function() { redirectToSketcfabModel(); }
+                null, 0.0
         ));
 
 
@@ -139,11 +140,29 @@ function updateVR()
       var gamepad = gamepads[i];
       if (gamepad) {
         if (gamepad.pose || gamepad.displayId)
+        {
           vrGamepads.push(gamepad);
+        }
 
         if( !gamepadType )
         {
             var id = gamepad.id;
+            if( id.startsWith("Oculus Touch"))
+            {
+                var rot = quat.create();
+                quat.rotateX(rot, rot, -0.3);
+                quat.rotateZ(rot, rot, 0.778);
+            
+                mat4.fromRotationTranslation(controllerOffset[0], rot, vec3.fromValues(-35.0, 10.0, 30));
+            
+                rot = quat.create();
+                quat.rotateX(rot, rot, -0.3);
+                quat.rotateZ(rot, rot, -0.778);
+            
+                mat4.fromRotationTranslation(controllerOffset[1], rot, vec3.fromValues(35.0, 10.0, 30));
+            
+                grabPointOffset = vec3.fromValues(0.0, 0.0, 0.0);
+            }
             if( id.startsWith("Spatial Controller (Spatial Interaction Source)"))
             {
                 var rot = quat.create();
@@ -176,7 +195,7 @@ function updateVR()
             
                 grabPointOffset = vec3.fromValues(0.0, -0.02, 0.055);
             }
-            else // going in blind here. only have tested on Windows MR & OpenVR
+            else 
             {
                 var rot = quat.create();
                 quat.rotateX(rot, rot, -0.3);
@@ -229,9 +248,6 @@ function updateVR()
                     gLockPressed.push(false);
                 }
 
-                // "OpenVR Gamepad"
-
-
                 var pullDown = vrGamepads[g].buttons[1].pressed;
                 var lockDown = (vrGamepads[g].buttons[3].pressed || vrGamepads[g].buttons[2].pressed);
                 var resetDown = vrGamepads[g].buttons[0].pressed || (vrGamepads[g].buttons.length > 4 &&  vrGamepads[g].buttons[4].pressed);
@@ -259,7 +275,7 @@ function updateVR()
 
                 if( !gResetPressed[g] && resetDown )
                 {
-                    setupVRScene();
+                    //setupVRScene();
                     _jellyFace.resetPositionData(true);
                     _jellyFace.resetJiggleSound(1.5);
                     gResetPressed[g] = true;
@@ -330,8 +346,8 @@ function renderVR()
         rvm = frameData.rightViewMatrix;
     }
 
-    render(lvm, frameData.leftProjectionMatrix, [0, 0, canvas.width * 0.5, canvas.height]);
-    render(rvm, frameData.rightProjectionMatrix, [canvas.width * 0.5, 0, canvas.width * 0.5, canvas.height]);
+    render(true, lvm, frameData.leftProjectionMatrix, [0, 0, canvas.width * 0.5, canvas.height]);
+    render(true, rvm, frameData.rightProjectionMatrix, [canvas.width * 0.5, 0, canvas.width * 0.5, canvas.height]);
 }
 
 function onVRRequestPresent () {
@@ -401,7 +417,7 @@ function setupVRScene()
 
     if( !pos )
     {
-        pos = vec3.fromValues(0.0, 1.4, -0.65);
+        pos = vec3.fromValues(0.0, 1.0, -0.65);
     }
 
     if( !rot )
@@ -447,6 +463,8 @@ function onVRPresentChange () {
 
         _jellyFace.stopSounds();
 
+        _backgroundColor = [0.1, 0.1, 0.1, 1.0];
+
     } else {    
         _jellyFace.setModelTransform(vec3.fromValues(0.0, 0.5, 0.0), quat.fromValues(0.0, 0.0, 0.0, 1.0), _jellyFace._modelScale);
         _jellyFace.setCameraTransform(vec3.fromValues(0.0, 0.6, 1.0), _jellyFace._cameraRotation);
@@ -456,6 +474,8 @@ function onVRPresentChange () {
 
         _jellyFace.updateLeapHand(0, null, false);
         _jellyFace.updateLeapHand(1, null, false);
+
+        _backgroundColor = [0.9, 0.9, 0.9, 1.0];
     }
 }
 

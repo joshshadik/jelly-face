@@ -241,7 +241,7 @@ class JellyFace {
     {
         mat4.perspective(this._pMatrix, 45, this._renderWidth/this._renderHeight, 0.01, 50.0);
 
-        var orthoSize = 0.8;
+        var orthoSize = 0.6;
         mat4.ortho( this._lightPerspective, -orthoSize, orthoSize, -orthoSize, orthoSize, 1.0, 10.0 );
 
         this._cameraRotation = quat.create();
@@ -344,6 +344,7 @@ class JellyFace {
 
         var floorVS = Material.createShader(shaders.vs.floor, gl.VERTEX_SHADER);
         var floorFS = Material.createShader(shaders.fs.floor, gl.FRAGMENT_SHADER);
+        var floorColFS = Material.createShader(shaders.fs.floorCol, gl.FRAGMENT_SHADER);
 
         var handVS = Material.createShader(shaders.vs.hand, gl.VERTEX_SHADER);
         var handFS = Material.createShader(shaders.fs.hand, gl.FRAGMENT_SHADER);
@@ -419,7 +420,7 @@ class JellyFace {
         this._handMaterial.setMatrix("uMMatrix", this._handsMatrix);
 
 
-        this._floorMaterials = [new Material(floorVS, floorFS)];
+        this._floorMaterials = [new Material(floorVS, floorFS), new Material(floorVS, floorColFS)];
 
         for( var i = 0; i < this._floorMaterials.length; ++i )
         {
@@ -429,6 +430,11 @@ class JellyFace {
             this._floorMaterials[i].setMatrix("uMMatrix", this._floorMatrix );
         }
 
+
+        if(_supportsWebGL2)
+        {
+            this._floorMaterials[1].setTexture("uShadowTex", this._shadowFbo.color().native());
+        }
 
     }
 
@@ -446,11 +452,8 @@ class JellyFace {
 
         this._faceMaterials.push(new Material(faceVS, faceFS));
 
-        if( !_supportsWebGL2 )
-        {
-            var faceColFS = Material.createShader(shaders.fs.faceCol, gl.FRAGMENT_SHADER);
-            this._faceMaterials.push(new Material(faceVS, faceColFS));
-        }
+        var faceColFS = Material.createShader(shaders.fs.faceCol, gl.FRAGMENT_SHADER);
+        this._faceMaterials.push(new Material(faceVS, faceColFS));
 
         for( var i = 0; i < this._faceMaterials.length; ++i )
         {
@@ -490,6 +493,10 @@ class JellyFace {
 
 
         this._shadowScreenMaterial.setMatrix("uLightSpace", this._lightVP);
+        this._floorMaterials[1].setMatrix("uLightSpace", this._lightVP);
+
+        this._faceMaterials[1].setMatrix("uLightSpace", this._lightVP);
+        this._faceMaterials[1].setTexture("uShadowTex", this._shadowFbo.color().native());
 
         this.updateScreenBufferMaterials();
     }
@@ -737,36 +744,28 @@ class JellyFace {
             mat4.invert(this._vMatrix, this._cameraMatrix);
             mat4.fromRotationTranslationScale( this._mMatrix, this._modelRotation, this._modelPosition, this._modelScale );
 
-
-            // this._faceMaterials[0].setMatrix("uMMatrix", this._mMatrix);
-            // this._faceMaterials[0].setMatrix("uVMatrix", this._vMatrix);
-
-            // this._voxelMaterials[this._voxelMaterialIndex].setMatrix("uMMatrix", this._mMatrix );
-            // this._voxelMaterials[this._voxelMaterialIndex].setMatrix("uVMatrix", this._vMatrix );
-
-            // this._velMaterial.setMatrix("uMMatrix", this._mMatrix);
-            // this._velMaterial.setMatrix("uVMatrix", this._vMatrix);
-
-            // this._grabMaterial.setMatrix("uMMatrix", this._mMatrix);
-            // this._grabMaterial.setMatrix("uVMatrix", this._vMatrix);
-
-            // this._handMaterial.setMatrix("uVMatrix", this._vMatrix);
-
-            // var invVP = [];
-            // //mat4.multiply(invVP, this._vMatrix, this._mMatrix);
-            // mat4.multiply(invVP, this._pMatrix, this._vMatrix); // , invVP);
-            // mat4.invert(invVP, invVP);
-
-            // this._velMaterial.setMatrix("uInvMVPMatrix", invVP);
-
-            for( var ss = 0; ss < this._stretchSounds.length; ++ss )
+            if (Time.deltaTime() < 0.05)
             {
-                this._stretchSounds[ss].update(Time.deltaTime());
+                for( var ss = 0; ss < this._stretchSounds.length; ++ss )
+                {
+                    this._stretchSounds[ss].update(Time.deltaTime());
+                }
             }
+
         }
 
+        if(this._faceLoaded)
+        {
+            this.renderParticleData( Time.deltaTime() );
+        }
 
-
+        if( this._shadowsEnabled )
+        {
+            if( this._faceLoaded )
+            {
+                this.renderShadows();
+            }
+        }
     }
 
     postUpdate()
@@ -806,30 +805,66 @@ class JellyFace {
 
     }
 
-    render(viewMatrix = null, projMatrix = null,  rect = null)
+    renderVR(viewMatrix = null, projMatrix = null,  rect = null)
     {
-
         if( viewMatrix )
         {
             mat4.multiply(viewMatrix, viewMatrix, this._vMatrix);
         }
         this.bindViewProjMatrix(viewMatrix ? viewMatrix : this._vMatrix, projMatrix ? projMatrix : this._pMatrix);
 
-        if(this._faceLoaded)
+
+        if( rect )
         {
-            this.renderParticleData( Time.deltaTime() );
+            Framebuffer.bindDefaultRect(rect);
         }
+        else
+        {
+            Framebuffer.bindDefault();
+        }
+
+        for( var hh = 0; hh < this._hands.length; ++hh )
+        {
+            if( this._hands[hh] != null )
+            {
+                this._hands[hh].render(this._handMaterial);
+            }
+        }
+
+        this.renderVRButtons(viewMatrix, projMatrix);
+
+        if( this._faceLoaded )
+        {
+            this._faceMaterials[1].apply();
+            this._faceMesh.render();
+            this._faceMaterials[1].unapply();
+
+            this._floorMaterials[1].apply();
+            this._floorMesh.render();
+            this._floorMaterials[1].unapply();
+        }
+
+        if( rect )
+        {
+            Framebuffer.bindDefaultRect(rect);
+        }
+        else
+        {
+            Framebuffer.bindDefault();
+        }
+    }
+
+    render()
+    {
+        this.bindViewProjMatrix(this._vMatrix, this._pMatrix);
 
         this._screenFbo.bind();
         if( _supportsWebGL2 )
         {
             gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
         }
-        gl.clearColor( 0.9, 0.9, 0.9, 0.0 );
+        gl.clearColor( _backgroundColor[0], _backgroundColor[1], _backgroundColor[2], 0.0 );
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-
-
 
         if( _supportsWebGL2 )
         {
@@ -840,8 +875,6 @@ class JellyFace {
                     this._hands[hh].render(this._handMaterial);
                 }
             }
-
-            this.renderVRButtons(viewMatrix, projMatrix);
         }
 
         if( this._faceLoaded )
@@ -862,22 +895,17 @@ class JellyFace {
 
         }
 
-
-
-
         if(!_supportsWebGL2 )
         {
             this._screenColorFbo.bind();
 
-            gl.clearColor( 0.9, 0.9, 0.9, 0.0 );
+            gl.clearColor(_backgroundColor[0], _backgroundColor[1], _backgroundColor[2], 0.0);
             gl.clear(gl.COLOR_BUFFER_BIT);
 
             for( var hh = 0; hh < this._hands.length; ++hh )
             {
                 this._hands[hh].render(this._handMaterial);
             }
-
-            this.renderVRButtons(viewMatrix, projMatrix);
 
             if( this._faceLoaded )
             {
@@ -887,15 +915,8 @@ class JellyFace {
             }
         }
 
-
-
-        if( this._shadowsEnabled )
+        if(this._shadowsEnabled)
         {
-            if( this._faceLoaded )
-            {
-                this.renderShadows();
-            }
-
             this._shadowScreenFbo.bind();
             gl.clearColor( 1.0, 1.0, 1.0, 1.0 );
             gl.clear( gl.COLOR_BUFFER_BIT );
@@ -904,17 +925,7 @@ class JellyFace {
             this._shadowScreenMaterial.unapply();
         }
 
-
-        if( rect )
-        {
-            Framebuffer.bindDefaultRect(rect);
-        }
-        else
-        {
-            Framebuffer.bindDefault();
-        }
-
-
+        Framebuffer.bindDefault();
 
         this._composeMaterial.apply();
         this._screenQuadMesh.render();
@@ -1187,7 +1198,7 @@ class JellyFace {
 
         vec3.add(this._lightPosition, this._modelPosition, localLightPos);
 
-        quat.rotateX(this._lightRotation, quat.create(), -0.778);
+        quat.rotateX(this._lightRotation, quat.create(), -0.8);
         quat.multiply(this._lightRotation, this._modelRotation, this._lightRotation);
 
 

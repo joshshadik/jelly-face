@@ -3,28 +3,31 @@
 var VERSION = 'v1';
 
 var cacheFirstFiles = [
-  'assets/snoop.jpg',
-  'assets/snoop.vbo',
-  'assets/vr_atlas.png',
+  'assets/snoop/model.zip',
+  'assets/snoop/texture.jpg',
+  'assets/vr_atlas.jpg',
+  'assets/charlize/model.zip',
+  'assets/charlize/texture.jpg',
+  'assets/jackie/model.zip',
+  'assets/jackie/texture.jpg',
+  'assets/marilyn/model.zip',
+  'assets/marilyn/texture.jpg',
+  'assets/obama/model.zip',
+  'assets/obama/texture.jpg',
+  'assets/shatner/model.zip',
+  'assets/shatner/texture.jpg',
   'icons/charlize.png',
   'icons/jackie.png',
   'icons/marilyn.png',
   'icons/obama.png',
   'icons/shatner.png',
   'icons/snoop.png',
-  'assets/charlize.jpg',
-  'assets/charlize.vbo',
-  'assets/jackie.jpg',
-  'assets/jackie.vbo',
-  'assets/marilyn.jpg',
-  'assets/marilyn.vbo',
-  'assets/obama.jpg',
-  'assets/obama.vbo',
-  'assets/shatner.jpg',
-  'assets/shatner.vbo',
-
+  'thirdparty/jquery-3.3.1.min.js',
   'thirdparty/gl-matrix-min.js',
   'thirdparty/ShaderLoader.js',
+  'thirdparty/jszip-3.1.5.min.js',
+  'thirdparty/jszip-utils-0.0.2.min.js',
+  'thirdparty/Tone-r12.min.js'
 ];
 
 var networkFirstFiles = [
@@ -49,8 +52,10 @@ var networkFirstFiles = [
   'shaders/gles30/copyFS.glsl',
   'shaders/gles30/faceFS.glsl',
   'shaders/gles30/faceVS.glsl',
+  'shaders/gles30/faceColFS.glsl',
   'shaders/gles30/floorFS.glsl',
   'shaders/gles30/floorVS.glsl',
+  'shaders/gles30/floorColFS.glsl',
   'shaders/gles30/grab3DVS.glsl',
   'shaders/gles30/grabVS.glsl',
   'shaders/gles30/handFS.glsl',
@@ -87,7 +92,10 @@ var networkFirstFiles = [
   'shaders/gles20/texturedQuadVS.glsl',
   'shaders/gles20/vColorFS.glsl',
   'shaders/gles20/vel3DVS.glsl',
-  'shaders/gles20/velVS.glsl'
+  'shaders/gles20/velVS.glsl',
+
+
+  'shaders/util/forwardlighting.glsl'
 ];
 
 // Below is the service worker code.

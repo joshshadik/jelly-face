@@ -7,6 +7,8 @@ var _time = null;
 var _started = true;
 var _firstUpdate = true;
 var _supportsWebGL2 = false;
+var _isMobile = false;
+var _backgroundColor = [0.9, 0.9, 0.9, 1.0];
 
 var shaders = null;
 
@@ -64,42 +66,34 @@ function start() {
         document.body.appendChild( stats.dom );
     }
 
+    _isMobile = window.orientation > -1;
+    var screenScale = _isMobile ? 0.8 : 1.0;
+
     Tone.context.latencyHint = "fastest";
 
     loadingElement = document.getElementById("loadingText");
 
     canvas = document.getElementById("glcanvas");
 
-    canvas.width  = window.innerWidth;
-    canvas.height = window.innerHeight;
+    var displayWidth  = Math.floor(window.innerWidth * window.devicePixelRatio * screenScale);
+    var displayHeight = Math.floor(window.innerHeight * window.devicePixelRatio * screenScale);
+
+    canvas.width  = displayWidth;
+    canvas.height = displayHeight;
+
     
     if (navigator.getVRDisplays) {
         initVR();
     } else {
         initWebGL(false);
     }
-
-
-
-    //initWebGL();
 }
 
 function loadFace(index)
 {
-    if(diaMode)
-    {
-        loadAvatarFace(models[index], "Created from artwork on display at the Detroit Institute of Arts");
-        modelIndex = index;
-        return;
-    }
-
+    loadAvatarFace(models[index], diaMode ? "Created from artwork on display at the Detroit Institute of Arts" : credits[index]);
     modelIndex = index;
-    isLoading = true;
-    loadingElement.style.display = "";
-    // vertexAttributeToggler.currAttributes = 0x0;
-    _jellyFace.loadFace("./assets/" + models[index], false, ready);
-    document.getElementById("attributions").innerHTML = credits[index];
-
+    
     gtag( 'event', 'load-face', { 'event_label' : models[modelIndex] } );
 }
 
@@ -155,10 +149,19 @@ function ready()
 //
 // Draw the scene.
 //
-function render(viewMatrix = null, projMatrix = null, rect = null) 
+function render(isVR = false, viewMatrix = null, projMatrix = null, rect = null) 
 { 
-    _jellyFace.render(viewMatrix, projMatrix, rect);
+    if(isVR)
+    {
+        _jellyFace.renderVR(viewMatrix, projMatrix, rect);
+    }
+    else
+    {
+        _jellyFace.render();
+    }
+    
 }
+
 
 // 
 // tick
@@ -188,10 +191,14 @@ function tick( currentTime )
     {
         
         //resize();
-    
+        
+        gl.clear( gl.COLOR_BUFFER_BIT );
+
         _jellyFace.update();
 
-        gl.clear( gl.COLOR_BUFFER_BIT );
+
+        gl.clearColor(_backgroundColor[0], _backgroundColor[1], _backgroundColor[2], 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         
         if( vrDisplay && vrDisplay.isPresenting ) 
         {
@@ -221,16 +228,23 @@ function tick( currentTime )
 
         if(_firstUpdate)
         {
-            gl.clearColor(0.9, 0.9, 0.9, 0.0);
+            gl.clearColor(_backgroundColor[0], _backgroundColor[1], _backgroundColor[2], 0.0);
             gl.clear(gl.COLOR_BUFFER_BIT);
         }
     }
+    
+
     if( vrDisplay && vrDisplay.isPresenting ) {
         vrDisplay.submitFrame();
     }
 
+    
+
     if(stats)
+    {
         stats.end();
+    }
+        
 }
 
 
@@ -242,6 +256,8 @@ function tick( currentTime )
 //
 function initWebGL(preserveBuffer = false) {
     gl = null;
+
+    console.log("initing webgl");
 
     var glAttribs = {
         alpha: false,
@@ -320,27 +336,29 @@ function initWebGL(preserveBuffer = false) {
         shaders.load('handFS',          'hand',         'fragment');
         shaders.load('texturedQuadVS',  'texturedQuad', 'vertex');
         shaders.load('texturedQuadFS',  'texturedQuad', 'fragment');
+        shaders.load('faceColFS',       'faceCol',      'fragment');
+        shaders.load('floorColFS',      'floorCol',     'fragment');    
 
         if( _supportsWebGL2 )
         {
             shaders.load('faceFS',          'face',         'fragment');
             shaders.load('floorFS',         'floor',        'fragment');
+            shaders.load('handColFS',       'handCol',      'fragment');
         }
         else
         {
             shaders.load('facePosFS',       'face',         'fragment');
             shaders.load('floorPosFS',      'floor',        'fragment');
-            shaders.load('faceColFS',       'faceCol',      'fragment');
-            shaders.load('floorColFS',      'floorCol',     'fragment');            
+        
         }
 
         _jellyFace = new JellyFace();
-        var isMobile = window.orientation > -1;
-        if(isMobile)
+        
+        if(_isMobile)
         {
             //_jellyFace._shadowsEnabled = false;
-            _jellyFace._shadowFboSize = 1024;
-            _jellyFace._shadowScreenScale = 0.25;
+            _jellyFace._shadowFboSize = 384;
+            _jellyFace._shadowScreenScale = 0.5;
         }
 
         shaders.shaderSetLoaded = function() {
@@ -372,7 +390,6 @@ function initWebGL(preserveBuffer = false) {
         animLoop = requestAnimationFrame(tick);  
 
         Leap.loop(leapAnimate);
-        
     }
 }
 
@@ -420,24 +437,26 @@ function loadTexture(dataSource, callback) {
 }
 
 function redirectToSketcfabModel() {
-    // commented out because it kicks user out of vr
-    // window.location.href = sketchfabURLS[modelIndex];
+    window.location.href = sketchfabURLS[modelIndex];
 }
 
 
 function resize() 
 {
+    var screenScale = _isMobile ? 0.8 : 1.0;
+
     if (vrDisplay && vrDisplay.isPresenting) {
         var leftEye = vrDisplay.getEyeParameters("left");
         var rightEye = vrDisplay.getEyeParameters("right");
-        canvas.width = Math.max(leftEye.renderWidth, rightEye.renderWidth) * 2;
-        canvas.height = Math.max(leftEye.renderHeight, rightEye.renderHeight);
+        
+        canvas.width = Math.max(leftEye.renderWidth * screenScale, rightEye.renderWidth * screenScale) * 2;
+        canvas.height = Math.max(leftEye.renderHeight * screenScale, rightEye.renderHeight * screenScale);
 
         _jellyFace.handleResize(canvas.width/2, canvas.height);
     }
     else{
-        var displayWidth  = Math.floor(window.innerWidth * window.devicePixelRatio);
-        var displayHeight = Math.floor(window.innerHeight * window.devicePixelRatio);
+        var displayWidth  = Math.floor(window.innerWidth * window.devicePixelRatio * screenScale);
+        var displayHeight = Math.floor(window.innerHeight * window.devicePixelRatio * screenScale);
 
         // Make the canvas the same size
         canvas.width  = displayWidth;
