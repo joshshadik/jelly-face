@@ -3,6 +3,7 @@ precision highp float;
 
 uniform sampler2D uColorTex;
 
+in vec3 vPos;
 in vec2 vTexcoord;
 in vec3 vColor;
 

@@ -1,6 +1,7 @@
 #version 300 es
 precision highp float;
 
+layout( location = 0) in vec3 aPos;
 layout( location = 2) in float aVertexID;
 
 uniform sampler2D uPosTex;
@@ -12,10 +13,12 @@ uniform vec3 uMousePos;
 uniform float uAspect;
 uniform float uRadius;
 
+out vec3 vPos;
 out vec4 vColor;
 
 void main(void) {
     gl_PointSize = 1.0;
+    vPos = aPos;
 
     vec2 uv = (vec2(mod(aVertexID, uImageSize), floor( aVertexID / uImageSize)) + 0.5 ) / uImageSize;
 

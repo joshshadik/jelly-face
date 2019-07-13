@@ -2,7 +2,7 @@
 precision highp float;
 precision highp sampler2D;
 
-//layout( location = 0) in vec3 aPos;
+layout( location = 0) in vec3 aPos;
 layout( location = 2) in float aVertexID;
 
 uniform sampler2D uDesiredPosTex;
@@ -27,11 +27,13 @@ uniform mat4 uPMatrix;
 
 uniform mat4 uInvMVPMatrix;
 
+out vec3 vPos;
 out vec4 vColor;
 
 
 void main(void) {
     gl_PointSize = 1.0;
+    vPos = aPos;
 
     float stiffness = 50.0;
     float damping = 2.5;

@@ -356,7 +356,7 @@ class JellyFace {
         this._velMaterial.setTexture("uGrabTex", this._grabBuffers[0].color().native());
         this._velMaterial.addVertexAttribute("aPos");
         this._velMaterial.addVertexAttribute("aVertexID");
-
+        
         this._velMaterial.setFloat("uRadius", 0.25 );
         this._velMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);
         this._velMaterial.setFloat("uImageSize", JellyFace.RT_TEX_SIZE());
@@ -367,8 +367,7 @@ class JellyFace {
         this._vel3DMaterial.setTexture("uVelTex", this._velFbo.color().native());
         this._vel3DMaterial.setTexture("uGrabTex0", this._grabBuffers[0].color().native());
         this._vel3DMaterial.setTexture("uGrabTex1", this._grabBuffers[1].color().native());
-        if(!_supportsWebGL2 )
-            this._vel3DMaterial.addVertexAttribute("aPos");
+        this._vel3DMaterial.addVertexAttribute("aPos");
         this._vel3DMaterial.addVertexAttribute("aVertexID");
 
         this._vel3DMaterial.setFloat("uRadius", 0.18 );
@@ -384,6 +383,7 @@ class JellyFace {
         this._grabMaterial = new Material(grabVS, this.vColorFS);
         this._grabMaterial.setTexture("uPosTex", this._posFbo.color().native());
         this._grabMaterial.addVertexAttribute("aVertexID");
+        this._grabMaterial.addVertexAttribute("aPos");
 
         this._grabMaterial.setFloat("uRadius", 0.25 );
         this._grabMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);
@@ -392,6 +392,7 @@ class JellyFace {
         this._grab3DMaterial = new Material(grab3DVS, this.vColorFS);
         this._grab3DMaterial.setTexture("uPosTex", this._posFbo.color().native());
         this._grab3DMaterial.addVertexAttribute("aVertexID");
+        this._grab3DMaterial.addVertexAttribute("aPos");
 
         this._grab3DMaterial.setFloat("uRadius", 0.18 );
         this._grab3DMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);
@@ -457,12 +458,10 @@ class JellyFace {
 
         for( var i = 0; i < this._faceMaterials.length; ++i )
         {
+            this._faceMaterials[i].addVertexAttribute("aPos");
             this._faceMaterials[i].addVertexAttribute("aTexcoord");
             this._faceMaterials[i].addVertexAttribute("aVertexID");
-            if(!_supportsWebGL2)
-            {
-                this._faceMaterials[i].addVertexAttribute("aPos");
-            }
+            
             this._faceMaterials[i].setTexture("uColorTex", this._faceColorBuffer.color().native());
             this._faceMaterials[i].setTexture("uPosTex", this._posFbo.color().native());
             this._faceMaterials[i].setTexture("uVelTex", this._velFbo.color().native());
