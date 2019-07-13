@@ -72,6 +72,13 @@ function loadAvatarFromPly(buf)
     var vboData = [];
     var iboData = [];
 
+    var maxMeshSize = _supportsUIntIndices ? 1 << 32 : 1 << 16;
+    var meshCount = (indices.length / maxMeshSize) + 1;
+    var meshes = [];
+    var currIdx = 0;
+
+    var layout = [ [0, 3], [12, 2], [20, 1] ];
+
     for( var i = 0; i < indices.length; ++i )
     {
         var idx = indices[i];
@@ -82,11 +89,22 @@ function loadAvatarFromPly(buf)
         vboData.push(texcoords[i*2+1]);
         vboData.push(idx*1.0);
 
-        iboData.push(i);
+        iboData.push(currIdx);
+        ++currIdx;
+
+        if (currIdx == maxMeshSize - 1 || i == indices.length - 1)
+        {
+            
+            var mesh = new Mesh(vboData, iboData, 24, layout);
+            meshes.push(mesh);
+            vboData = [];
+            iboData = [];
+            currIdx = 0;
+        }
+
     }
 
-    var layout = [ [0, 3], [12, 2], [20, 1] ];
-    return new Mesh(vboData, iboData, 24, layout);
+    return meshes;
 }
 
 function loadAvatar(url, callback)

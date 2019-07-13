@@ -7,6 +7,7 @@ var _time = null;
 var _started = true;
 var _firstUpdate = true;
 var _supportsWebGL2 = false;
+var _supportsUIntIndices = true;
 var _isMobile = false;
 var _backgroundColor = [0.9, 0.9, 0.9, 1.0];
 
@@ -343,7 +344,6 @@ function initWebGL(preserveBuffer = false) {
         {
             shaders.load('faceFS',          'face',         'fragment');
             shaders.load('floorFS',         'floor',        'fragment');
-            shaders.load('handColFS',       'handCol',      'fragment');
         }
         else
         {
@@ -448,6 +448,9 @@ function resize()
     if (vrDisplay && vrDisplay.isPresenting) {
         var leftEye = vrDisplay.getEyeParameters("left");
         var rightEye = vrDisplay.getEyeParameters("right");
+
+        if(_isMobile)
+        {screenScale = 0.6;}
         
         canvas.width = Math.max(leftEye.renderWidth * screenScale, rightEye.renderWidth * screenScale) * 2;
         canvas.height = Math.max(leftEye.renderHeight * screenScale, rightEye.renderHeight * screenScale);
