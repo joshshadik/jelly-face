@@ -1,6 +1,6 @@
-precision highp float;
+precision mediump float;
 precision mediump int;
-precision highp sampler2D;
+precision mediump sampler2D;
 
 attribute vec3 aPos;
 

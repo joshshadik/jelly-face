@@ -1,5 +1,5 @@
-precision highp float;
-precision highp sampler2D;
+precision mediump float;
+precision mediump sampler2D;
 
 attribute vec3 aPos;
 attribute vec2 aTexcoord;
