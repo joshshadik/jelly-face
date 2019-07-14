@@ -221,7 +221,9 @@ class JellyFace {
         {
 
             var ext = gl.getExtension("OES_texture_float");
-            if( ext == null )
+            var ext2 = gl.getExtension("WEBGL_color_buffer_float");
+            
+            if( ext == null || ext2 == null)
             {
                 ext = gl.getExtension("OES_texture_half_float");
                 if( ext != null )
