@@ -53,6 +53,7 @@ var diaMode = false;
 
 var grabCount = 0;
 
+var _soundEnabled = true;
 
 //
 // start
@@ -70,7 +71,15 @@ function start() {
     _isMobile = window.orientation > -1;
     var screenScale = _isMobile ? 0.8 : 1.0;
 
-    Tone.context.latencyHint = "fastest";
+    try 
+    {
+        Tone.context.latencyHint = "fastest";  
+    }
+    catch(err) 
+    {
+        _soundEnabled = false;
+    }
+
 
     loadingElement = document.getElementById("loadingText");
 

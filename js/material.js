@@ -95,18 +95,20 @@ class Material {
     addVertexAttribute( attName ) 
     {
         var attValue = gl.getAttribLocation(this.shaderProgram, attName );
-        gl.enableVertexAttribArray(attValue);
-        this.vertexAttributes[attName] = attValue;
-        if(!_supportsWebGL2)
+        if(attValue >= 0)
         {
-            gl.disableVertexAttribArray(attValue);
-        }
-        
+            gl.enableVertexAttribArray(attValue);
+            this.vertexAttributes[attName] = attValue;
+            if(!_supportsWebGL2)
+            {
+                gl.disableVertexAttribArray(attValue);
+            }      
 
-        this.vAttribBits = 0;
-        for( var attName in this.vertexAttributes )
-        {
-            this.vAttribBits |= 1 << this.vertexAttributes[attName];
+            this.vAttribBits = 0;
+            for( var attName in this.vertexAttributes )
+            {
+                this.vAttribBits |= 1 << this.vertexAttributes[attName];
+            }
         }
 
         return attValue;
@@ -125,7 +127,7 @@ class Material {
     
     apply() 
     {
-        
+        Material.current = this;
         switch(this._cullMode )
         {
             case FaceCullModeEnum.FRONT:
@@ -188,7 +190,21 @@ class Material {
             }
         }
 
+
+        
+
         //vertexAttributeToggler.enable(this.vAttribBits);
+    }
+
+    bindAttribPointers(layout, stride)
+    {
+        for( var key in layout)
+        {
+            if(this.vertexAttributes[key] >= 0)
+            {
+                gl.vertexAttribPointer(this.vertexAttributes[key], layout[key][1], gl.FLOAT, false, stride, layout[key][0]);
+            }
+        }
     }
 
     unapply()

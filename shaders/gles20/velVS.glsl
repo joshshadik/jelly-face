@@ -56,8 +56,8 @@ void main(void) {
 
     vec3 scrVel = (off / max(sqDist, 0.1)) * uDeltaTime;
 
-    float pull = sqDist * 4.0;
-    pull = pull * pull * 50.0;
+    // float pull = sqDist * 4.0;
+    // pull = pull * pull * 50.0;
     scrVel = scrVel * (1.0 - grab) - ( off * 3.0) * grab;
 
     vec4 wVel = (uInvMVPMatrix * vec4(scrVel.xyz, 0.0));

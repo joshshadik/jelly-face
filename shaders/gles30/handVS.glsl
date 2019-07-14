@@ -4,6 +4,9 @@ precision mediump int;
 precision highp sampler2D;
 
 layout( location = 0) in vec3 aPos;
+layout( location = 1) in vec2 aTexcoord;
+layout( location = 2) in float aVertexID;
+
 
 uniform mat4 uMMatrix;
 uniform mat4 uVMatrix;

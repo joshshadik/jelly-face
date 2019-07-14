@@ -96,7 +96,11 @@ class JellyFace {
 
         this._using3DTool = false;
 
-        this._stretchSounds = [new StretchSound(), new StretchSound()];
+        if(_soundEnabled)
+        {
+            this._stretchSounds = [new StretchSound(), new StretchSound()];
+        }
+        
         this._startStretchPos = [[], []];
 
         this._toolInUse = [false, false];
@@ -109,7 +113,11 @@ class JellyFace {
     loadFace(path, fromAvatar, readyCallback)
     {
         this._faceLoaded = false;
-        var bufLayout = [ [0, 3], [12, 2], [20, 1] ];
+        var bufLayout = {
+            "aPos" : [0, 3, 0],
+            "aTexcoord" : [12, 2, 1],
+            "aVertexID" : [20, 1, 2]
+        };
         var self = this;
 
         if( !this._initialized )
@@ -155,8 +163,9 @@ class JellyFace {
     {
 
         var initPosVS = Material.createShader(shaders.vs.initPos, gl.VERTEX_SHADER);
-        var initDataMaterial = new Material( initPosVS, this.vColorFS );
+        var initDataMaterial = new Material( initPosVS, this.vColorFS, "initData" );
         initDataMaterial.addVertexAttribute("aPos");
+        initDataMaterial.addVertexAttribute("aTexcoord");
         initDataMaterial.addVertexAttribute("aVertexID");
         initDataMaterial.setMatrix("uPMatrix", this._pMatrix );
         initDataMaterial.setMatrix("uVMatrix", this._vMatrix );
@@ -225,8 +234,8 @@ class JellyFace {
                 }
             }
 
-            var ext1 = gl.getExtension("OES_element_index_uint")
-
+            var ext1 = gl.getExtension("OES_element_index_uint");
+            
             if( ext1 == null )
             {
                 _supportsUIntIndices = false;
@@ -355,6 +364,7 @@ class JellyFace {
         this._velMaterial.setTexture("uVelTex", this._velFbo.color().native());
         this._velMaterial.setTexture("uGrabTex", this._grabBuffers[0].color().native());
         this._velMaterial.addVertexAttribute("aPos");
+        this._velMaterial.addVertexAttribute("aTexcoord");
         this._velMaterial.addVertexAttribute("aVertexID");
         
         this._velMaterial.setFloat("uRadius", 0.25 );
@@ -384,6 +394,7 @@ class JellyFace {
         this._grabMaterial.setTexture("uPosTex", this._posFbo.color().native());
         this._grabMaterial.addVertexAttribute("aVertexID");
         this._grabMaterial.addVertexAttribute("aPos");
+        this._grabMaterial.addVertexAttribute("aTexcoord");
 
         this._grabMaterial.setFloat("uRadius", 0.25 );
         this._grabMaterial.setFloat("uAspect", this._renderHeight / this._renderWidth);
@@ -749,11 +760,14 @@ class JellyFace {
             mat4.invert(this._vMatrix, this._cameraMatrix);
             mat4.fromRotationTranslationScale( this._mMatrix, this._modelRotation, this._modelPosition, this._modelScale );
 
-            if (Time.deltaTime() < 0.05)
+            if(_soundEnabled)
             {
-                for( var ss = 0; ss < this._stretchSounds.length; ++ss )
+                if (Time.deltaTime() < 0.05)
                 {
-                    this._stretchSounds[ss].update(Time.deltaTime());
+                    for( var ss = 0; ss < this._stretchSounds.length; ++ss )
+                    {
+                        this._stretchSounds[ss].update(Time.deltaTime());
+                    }
                 }
             }
 
@@ -782,10 +796,10 @@ class JellyFace {
     debugPosBuffer()
     {
         gl.bindFramebuffer( gl.FRAMEBUFFER, null );
-        gl.viewport(0, 0, 512, 512);
+        gl.viewport(0, 0, 128, 128);
         //gl.clear( gl.COLOR_BUFFER_BIT );
 
-        this._copyMaterial.setTexture("uCopyTex", this._shadowScreenFbo.color(0).native() );
+        this._copyMaterial.setTexture("uCopyTex", this._screenFbo.color(1).native() );
         this._copyMaterial.apply();
         this._screenQuadMesh.render();
         this._copyMaterial.unapply();
@@ -1033,6 +1047,7 @@ class JellyFace {
 
         this._using3DTool = grab3D;
 
+        if(_soundEnabled)
         {
             this._stretchSounds[index].begin();
             this._toolInUse[index] = true;
@@ -1052,7 +1067,7 @@ class JellyFace {
             Framebuffer.bindDefault();
         }
 
-
+        if(_soundEnabled)
         {
             this._stretchSounds[index].end();
             this._toolInUse[index] = false;

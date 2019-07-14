@@ -77,7 +77,11 @@ function loadAvatarFromPly(buf)
     var meshes = [];
     var currIdx = 0;
 
-    var layout = [ [0, 3], [12, 2], [20, 1] ];
+    var layout = {
+        "aPos" : [0, 3, 0],
+        "aTexcoord" : [12, 2, 1],
+        "aVertexID" : [20, 1, 2]
+    };
 
     for( var i = 0; i < indices.length; ++i )
     {

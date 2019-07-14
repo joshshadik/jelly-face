@@ -1,6 +1,6 @@
 "use strict";
 class Mesh {
-    constructor(vertices, indices, stride = 12, layout = [[0, 3]])
+    constructor(vertices, indices, stride = 12, layout = { "aPos" : [0, 3, 0] })
     {
         this.vertexBuffer = gl.createBuffer();
         this.indexBuffer = gl.createBuffer();
@@ -28,9 +28,16 @@ class Mesh {
     {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
 
-        for( var i = 0; i < this.layout.length; i++ )
+        if(_supportsWebGL2)
         {
-            gl.vertexAttribPointer(i, this.layout[i][1], gl.FLOAT, false, this.stride, this.layout[i][0]);
+            for( var key in this.layout)
+            {
+                gl.vertexAttribPointer(this.layout[key][2], this.layout[key][1], gl.FLOAT, false, this.stride, this.layout[key][0]);
+            }
+        }
+        else if (Material.current != null)
+        {
+            Material.current.bindAttribPointers(this.layout, this.stride);
         }
 
         //gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);  
